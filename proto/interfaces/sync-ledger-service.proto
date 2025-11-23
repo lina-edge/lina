@@ -1,0 +1,12 @@
+syntax = "proto3";
+package iot.payperuse.edge.interfaces.sync.ledger;
+
+option go_package = "gen/iot/payperuse/edge/interfaces/sync/ledger";
+
+import "model-ledger-service.proto";
+
+service LedgerService {
+  // Creates a new authorization or returns the active one for the device.
+  rpc CreateOrGetAuthorization(iot.payperuse.edge.model.ledger.CreateAuthorizationRequest)
+      returns (iot.payperuse.edge.model.ledger.CreateAuthorizationResponse);
+}

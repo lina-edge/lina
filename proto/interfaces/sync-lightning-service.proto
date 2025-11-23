@@ -1,0 +1,12 @@
+syntax = "proto3";
+package iot.payperuse.edge.interfaces.sync.lightning;
+
+option go_package = "gen/iot/payperuse/edge/interfaces/sync/lightning";
+
+import "model-lightning-service.proto";
+
+service LightningService {
+  // Creates a Lightning invoice for the given device and amount.
+  rpc CreateInvoice(iot.payperuse.edge.model.lightning.CreateInvoiceRequest)
+      returns (iot.payperuse.edge.model.lightning.CreateInvoiceResponse);
+}

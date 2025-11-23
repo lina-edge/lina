@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package iot.payperuse.edge.model.device;
+
+option go_package = "gen/iot/payperuse/edge/model/device";
+
+// Reporting strategy used when sending usage.
+enum UsageReportingStrategy {
+  USAGE_STRATEGY_UNSPECIFIED = 0;
+  USAGE_STRATEGY_INTERVAL    = 1;  // "interval"
+  USAGE_STRATEGY_DELTA       = 2;  // "delta"
+  USAGE_STRATEGY_TOTAL       = 3;  // "total"
+}
+
+// Normalized usage record derived from a device report.
+message UsageRecord {
+  string device_id             = 1;
+  string report_id            = 2;  // unique identifier for idempotency
+  UsageReportingStrategy strategy = 3;
+  double measure               = 4;  // amount consumed in unit
+  string unit                  = 5;  // e.g., "kWh"
+  string timestamp             = 6;  // ISO-8601 timestamp
+}
+
+// event.device: emitted when a device usage report is received.
+message DeviceUsageReportedEvent {
+  UsageRecord usage = 1;
+}
+
+// Envelope for entries in the event.device stream.
+enum DeviceEventType {
+  DEVICE_EVENT_TYPE_UNSPECIFIED    = 0;
+  DEVICE_EVENT_TYPE_USAGE_REPORTED = 1;
+}
+
+message DeviceEvent {
+  DeviceEventType type = 1;
+
+  oneof payload {
+    DeviceUsageReportedEvent usage_reported = 2;
+  }
+}

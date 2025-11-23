@@ -1,0 +1,110 @@
+syntax = "proto3";
+
+package iot.payperuse.edge.model.ledger;
+
+option go_package = "gen/iot/payperuse/edge/model/ledger";
+
+// Status of an authorization hold in the ledger.
+enum AuthorizationStatus {
+  AUTHORIZATION_STATUS_UNSPECIFIED = 0;
+  AUTHORIZATION_STATUS_GRANTED     = 1;
+  AUTHORIZATION_STATUS_ACTIVE      = 2;
+  AUTHORIZATION_STATUS_REJECTED    = 3;
+}
+
+// Authorization hold for a device.
+message Authorization {
+  string device_id        = 1;
+  string authorization_id = 2;
+  int64  granted_msat     = 3;
+  int64  remaining_msat   = 4;
+  string issued_at        = 5;  // ISO-8601 timestamp
+  string expires_at       = 6;  // ISO-8601 timestamp
+}
+
+// Balance projection for a device at a given time.
+message BalanceProjection {
+  string device_id      = 1;
+  int64  available_msat = 2;
+  int64  reserved_msat  = 3;
+  int64  total_msat     = 4;
+  string as_of          = 5;  // ISO-8601 timestamp
+}
+
+// Creates a new authorization hold or returns the active one for the device.
+message CreateAuthorizationRequest {
+  string device_id    = 1;
+  int64  request_msat = 2;  // desired allowance
+  string reason       = 3;  // e.g., "STARTUP"
+}
+
+message CreateAuthorizationResponse {
+  AuthorizationStatus status        = 1;
+  Authorization       authorization = 2;  // present for GRANTED/ACTIVE
+  int64  available_msat             = 3;  // current available balance
+  string reason                     = 4;  // explanation for REJECTED or ACTIVE
+}
+
+// Returns the current balance projection for the device.
+message GetBalanceRequest {
+  string device_id = 1;
+}
+
+message GetBalanceResponse {
+  BalanceProjection balance = 1;
+}
+
+// ----- event.ledger: authorization and balance updates -----
+
+message AuthorizationCreatedEvent {
+  Authorization authorization = 1;
+}
+
+message AuthorizationCompletedEvent {
+  string authorization_id = 1;
+  string device_id        = 2;
+  string timestamp        = 3;
+}
+
+message AuthorizationExpiredEvent {
+  string authorization_id = 1;
+  string device_id        = 2;
+  string timestamp        = 3;
+}
+
+message DeviceCreditedEvent {
+  string device_id        = 1;
+  int64  amount_msat      = 2;
+  int64  new_balance_msat = 3;
+  string timestamp        = 4;
+}
+
+message DeviceDebitedEvent {
+  string device_id        = 1;
+  string authorization_id = 2;
+  int64  amount_msat      = 3;
+  int64  remaining_msat   = 4;
+  string timestamp        = 5;
+}
+
+// Envelope for entries in the event.ledger stream.
+enum LedgerEventType {
+  LEDGER_EVENT_TYPE_UNSPECIFIED          = 0;
+  LEDGER_EVENT_TYPE_AUTHORIZATION_CREATED   = 1;
+  LEDGER_EVENT_TYPE_AUTHORIZATION_COMPLETED = 2;
+  LEDGER_EVENT_TYPE_AUTHORIZATION_EXPIRED   = 3;
+  LEDGER_EVENT_TYPE_DEVICE_CREDITED         = 4;
+  LEDGER_EVENT_TYPE_DEVICE_DEBITED          = 5;
+}
+
+message LedgerEvent {
+  LedgerEventType type = 1;
+
+  oneof payload {
+    AuthorizationCreatedEvent   authorization_created   = 2;
+    AuthorizationCompletedEvent authorization_completed = 3;
+    AuthorizationExpiredEvent   authorization_expired   = 4;
+    DeviceCreditedEvent         device_credited         = 5;
+    DeviceDebitedEvent          device_debited          = 6;
+  }
+}

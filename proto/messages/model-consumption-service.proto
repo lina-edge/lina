@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package iot.payperuse.edge.model.consumption;
+
+option go_package = "gen/iot/payperuse/edge/model/consumption";
+
+// event.consumption: emitted after pricing a usage record.
+message DeviceConsumptionRecordedEvent {
+  string device_id        = 1;
+  string authorization_id = 2;   // active authorization, if any
+  int64  debit_msat       = 3;   // amount to debit from the authorization
+  string timestamp        = 4;   // ISO-8601 timestamp
+}
+
+// Envelope for entries in the event.consumption stream.
+enum ConsumptionEventType {
+  CONSUMPTION_EVENT_TYPE_UNSPECIFIED               = 0;
+  CONSUMPTION_EVENT_TYPE_DEVICE_CONSUMPTION_RECORDED = 1;
+}
+
+message ConsumptionEvent {
+  ConsumptionEventType type = 1;
+
+  oneof payload {
+    DeviceConsumptionRecordedEvent device_consumption_recorded = 2;
+  }
+}
