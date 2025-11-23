@@ -5,4 +5,4 @@ certs/*.key
 certs/*.pem
 !certs/.gitkeep
 config/passwd
-
+config/dynamic-security.json

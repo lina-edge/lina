@@ -52,3 +52,6 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+mosquitto/config/passwd
+mosquitto/config/dynamic-security.json

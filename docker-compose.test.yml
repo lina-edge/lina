@@ -54,6 +54,8 @@ services:
       - MQTT_CLIENT_ID=${MQTT_CLIENT_ID:-device-service}
       - MQTT_USERNAME=${MQTT_USERNAME:-}
       - MQTT_PASSWORD=${MQTT_PASSWORD:-}
+      - MQTT_DYNSEC_ADMIN_USER=${MQTT_DYNSEC_ADMIN_USER:-}
+      - MQTT_DYNSEC_ADMIN_PASSWORD=${MQTT_DYNSEC_ADMIN_PASSWORD:-}
     volumes:
       - ./mosquitto/certs:/certs:ro
     depends_on:
