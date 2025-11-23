@@ -37,15 +37,14 @@ generate-messages:
 	fi
 
 generate-interfaces:
-	@echo "Generating Go code from interface proto files (with gRPC)..."
+	@echo "Generating Go code from interface proto files (gRPC only)..."
 	@mkdir -p $(GEN_DIR)
 	@if [ -z "$(INTERFACE_PROTO_FILES)" ]; then \
 		echo "No interface proto files found in $(INTERFACES_DIR)/"; \
 	else \
 		for proto in $(INTERFACE_PROTO_FILES); do \
 			echo "Generating from $$proto..."; \
-			$(PROTOC) --go_out=$(OUT_DIR) \
-				--go-grpc_out=$(OUT_DIR) \
+			$(PROTOC) --go-grpc_out=$(OUT_DIR) \
 				-I. -I=$(INTERFACES_DIR) -I=$(MESSAGES_DIR) $$proto; \
 		done; \
 		echo "Interface generation complete!"; \
@@ -64,7 +63,7 @@ generate-docker:
 		go install google.golang.org/protobuf/cmd/protoc-gen-go@latest && \
 		go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest && \
 		protoc --go_out=gen -I. -I=messages messages/*.proto && \
-		protoc --go_out=gen --go-grpc_out=gen -I. -I=interfaces -I=messages interfaces/*.proto"
+		protoc --go-grpc_out=gen -I. -I=interfaces -I=messages interfaces/*.proto"
 	@echo "Docker generation complete!"
 
 clean:

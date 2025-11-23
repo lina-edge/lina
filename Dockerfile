@@ -1,27 +1,34 @@
 # Build Stage
 FROM golang:1.25-alpine AS builder
 
-# ARG for service folder (e.g. consumption, registry, ledger)
-ARG SERVICE
-WORKDIR /app
+    # ARG for service folder (e.g. consumption, registry, ledger)
+    ARG SERVICE
+    WORKDIR /workspace
 
-# Copy go.mod and go.sum first to leverage Docker's layer caching
-COPY ${SERVICE}/go.mod ${SERVICE}/go.sum ./
-RUN go mod download
+    # Copy only the proto module files needed for the replace directive
+    # We need go.mod for the module and gen/ for the generated files
+    COPY proto/go.mod ./proto/
+    COPY proto/gen ./proto/gen
 
-# Copy the rest of the application source code
-COPY ${SERVICE} ./
+    # Copy go.mod and go.sum to the service directory to maintain relative paths
+    COPY ${SERVICE}/go.mod ${SERVICE}/go.sum ./${SERVICE}/
+    WORKDIR /workspace/${SERVICE}
+    RUN go mod download
 
-# Build the Go application
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o myapp .
+    # Copy the rest of the application source code
+    COPY ${SERVICE} ./
+
+    # Build the Go application
+    RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o myapp .
 
 # Final Stage
 FROM alpine:latest
 
-WORKDIR /app
+    ARG SERVICE
+    WORKDIR /app
 
-COPY --from=builder /app/myapp .
+    COPY --from=builder /workspace/${SERVICE}/myapp .
 
-EXPOSE 8080
+    EXPOSE 8080
 
-CMD ["./myapp"]
+    CMD ["./myapp"]
