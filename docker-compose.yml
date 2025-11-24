@@ -8,9 +8,9 @@ services:
     ports:
       - "${MQTT_PORT:-1883}:1883"   # Non-TLS port
       - "${MQTT_TLS_PORT:-8883}:8883" # TLS port
-    volumes:
+    # volumes:
       # Only persist data directory (dynamic-security.json and mosquitto.db)
-      - ./mosquitto/data:/mosquitto/data
+      # - ./mosquitto/data:/mosquitto/data
     environment:
       - MQTT_USERNAME=${MQTT_USERNAME:-}
       - MQTT_PASSWORD=${MQTT_PASSWORD:-}

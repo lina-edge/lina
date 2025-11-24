@@ -17,16 +17,31 @@ if [ -z "$PASSWORD" ]; then
     echo "No password provided, generating random password"
 fi
 
+# Get dynsec admin credentials from environment
+DYNSEC_ADMIN_USER="${MQTT_DYNSEC_ADMIN_USER:-admin}"
+DYNSEC_ADMIN_PASSWORD="${MQTT_DYNSEC_ADMIN_PASSWORD:-admin}"
+
 # Check if password file already exists
+FILE_EXISTS=false
 if [ -f "$PASSWD_FILE" ]; then
     echo "Password file already exists: $PASSWD_FILE"
-    exit 0
+    FILE_EXISTS=true
+else
+    echo "Creating new password file"
 fi
 
-echo "Creating password file for user: $USERNAME"
+# Create or update device-service user
+if [ "$FILE_EXISTS" = false ]; then
+    echo "Adding user: $USERNAME"
+    echo -e "$PASSWORD\n$PASSWORD" | mosquitto_passwd -c "$PASSWD_FILE" "$USERNAME"
+else
+    echo "Updating user: $USERNAME"
+    echo -e "$PASSWORD\n$PASSWORD" | mosquitto_passwd "$PASSWD_FILE" "$USERNAME"
+fi
 
-# Use mosquitto_passwd (should be available in the container)
-echo -e "$PASSWORD\n$PASSWORD" | mosquitto_passwd -c "$PASSWD_FILE" "$USERNAME"
+# Add or update dynsec admin user (without -c flag to append/update)
+echo "Adding/updating dynsec admin user: $DYNSEC_ADMIN_USER"
+echo -e "$DYNSEC_ADMIN_PASSWORD\n$DYNSEC_ADMIN_PASSWORD" | mosquitto_passwd "$PASSWD_FILE" "$DYNSEC_ADMIN_USER"
 
 if [ $? -eq 0 ]; then
     # Set proper permissions and ownership so mosquitto user can read it
@@ -43,7 +58,7 @@ if [ $? -eq 0 ]; then
     chmod 755 "$(dirname "$PASSWD_FILE")"
     
     echo "Password file created successfully: $PASSWD_FILE"
-    echo "Username: $USERNAME"
+    echo "Added users: $USERNAME, $DYNSEC_ADMIN_USER"
     # echo "Password: $PASSWORD"
 else
     echo "Failed to create password file"
