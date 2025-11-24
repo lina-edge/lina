@@ -6,14 +6,18 @@ FROM golang:1.25-alpine AS builder
     WORKDIR /workspace
 
     # Copy proto module to match project structure
-    COPY proto/go.mod ./proto/
-    COPY proto/gen ./proto/gen
+    # Proto is now in services/proto, but we copy it to ./proto/ in container
+    # so that ../proto from services/${SERVICE} resolves correctly
+    COPY services/proto/go.mod ./services/proto/
+    COPY services/proto/gen ./services/proto/gen
     
-    # Copy library module to match project structure
-    COPY library/go.mod ./library/
-    COPY library/*.go ./library/
-    # If your library directory has subdirectories to include, copy as needed:
-    COPY library/ ./library/
+    # Copy internal module to match project structure
+    # Internal is now in services/internal, but we copy it to ./internal/ in container
+    # so that ../internal from services/${SERVICE} resolves correctly
+    COPY services/internal/go.mod ./services/internal/
+    COPY services/internal/*.go ./services/internal/
+    # If your internal directory has subdirectories to include, copy as needed:
+    COPY services/internal/ ./services/internal/
 
     # Copy service files to services/ directory to match project structure
     COPY services/${SERVICE}/go.mod services/${SERVICE}/go.sum ./services/${SERVICE}/

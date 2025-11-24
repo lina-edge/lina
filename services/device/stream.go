@@ -9,19 +9,19 @@ import (
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/protobuf/encoding/protojson"
 
-	"github.com/robertodantas/lnpay/library"
+	"github.com/robertodantas/lnpay/internal"
 	devicepb "github.com/robertodantas/lnpay/proto/gen/model/device"
 	mqttpb "github.com/robertodantas/lnpay/proto/gen/model/mqtt"
 )
 
-// StreamClient wraps the library StreamClient with device-specific methods
+// StreamClient wraps the internal StreamClient with device-specific methods
 type StreamClient struct {
-	*library.StreamClient
+	*internal.StreamClient
 }
 
-// NewStreamClient creates a new Redis stream client using the library
+// NewStreamClient creates a new Redis stream client using the internal package
 func NewStreamClient() (*StreamClient, error) {
-	libClient, err := library.NewStreamClientFromEnv()
+	libClient, err := internal.NewStreamClientFromEnv()
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +127,7 @@ func (sc *StreamClient) PublishDeviceUsageReportedEvent(payload *mqttpb.UsagePay
 	return nil
 }
 
-// Close closes the Redis client connection (delegates to embedded library client)
+// Close closes the Redis client connection (delegates to embedded internal client)
 func (sc *StreamClient) Close() error {
 	return sc.StreamClient.Close()
 }

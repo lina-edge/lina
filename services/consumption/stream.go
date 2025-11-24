@@ -9,14 +9,14 @@ import (
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/protobuf/encoding/protojson"
 
-	"github.com/robertodantas/lnpay/library"
+	"github.com/robertodantas/lnpay/internal"
 	consumptionpb "github.com/robertodantas/lnpay/proto/gen/model/consumption"
 	devicepb "github.com/robertodantas/lnpay/proto/gen/model/device"
 )
 
 // StreamHandler handles Redis stream operations for the consumption service
 type StreamHandler struct {
-	streamClient *library.StreamClient
+	streamClient *internal.StreamClient
 	cfg          Config
 	repository   *ConsumptionRepository
 	consumerName string
@@ -24,7 +24,7 @@ type StreamHandler struct {
 }
 
 // NewStreamHandler creates a new stream handler
-func NewStreamHandler(streamClient *library.StreamClient, cfg Config, repository *ConsumptionRepository) *StreamHandler {
+func NewStreamHandler(streamClient *internal.StreamClient, cfg Config, repository *ConsumptionRepository) *StreamHandler {
 	return &StreamHandler{
 		streamClient: streamClient,
 		cfg:          cfg,

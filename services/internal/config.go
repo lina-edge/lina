@@ -1,4 +1,4 @@
-package library
+package internal
 
 import (
 	"os"
@@ -32,4 +32,3 @@ func BoolEnv(key string, defaultValue bool) bool {
 	}
 	return defaultValue
 }
-

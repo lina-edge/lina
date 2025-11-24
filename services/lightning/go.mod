@@ -5,7 +5,7 @@ go 1.25.4
 require (
 	github.com/lightninglabs/lndclient v0.19.3-0
 	github.com/lightningnetwork/lnd v0.19.3-beta
-	github.com/robertodantas/lnpay/library v0.0.0-00010101000000-000000000000
+	github.com/robertodantas/lnpay/internal v0.0.0-00010101000000-000000000000
 	google.golang.org/grpc v1.65.0-dev
 )
 
@@ -194,4 +194,4 @@ replace github.com/btcsuite/btcd/btcec => github.com/btcsuite/btcd/btcec/v2 v2.3
 replace google.golang.org/protobuf => github.com/lightninglabs/protobuf-go-hex-display v1.33.0-hex-display
 
 // Local dependencies
-replace github.com/robertodantas/lnpay/library => ../../library
+replace github.com/robertodantas/lnpay/internal => ../internal

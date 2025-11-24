@@ -1,4 +1,4 @@
-module github.com/robertodantas/lnpay/library
+module github.com/robertodantas/lnpay/internal
 
 go 1.25.4
 

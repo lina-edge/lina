@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/robertodantas/lnpay/library"
+	"github.com/robertodantas/lnpay/internal"
 )
 
 type Config struct {
@@ -13,10 +13,10 @@ type Config struct {
 
 func LoadConfig() Config {
 	return Config{
-		LNDHost:        library.GetEnv("LND_HOST", ""),
-		LNDTLSCertHex:   library.GetEnv("LND_TLS_CERT_HEX", ""),
-		LNDMacaroonHex:  library.GetEnv("LND_MACAROON_HEX", ""),
-		Network:         library.GetEnv("LND_NETWORK", "mainnet"),
+		LNDHost:        internal.GetEnv("LND_HOST", ""),
+		LNDTLSCertHex:   internal.GetEnv("LND_TLS_CERT_HEX", ""),
+		LNDMacaroonHex:  internal.GetEnv("LND_MACAROON_HEX", ""),
+		Network:         internal.GetEnv("LND_NETWORK", "mainnet"),
 	}
 }
 

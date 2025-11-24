@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/robertodantas/lnpay/library"
+	"github.com/robertodantas/lnpay/internal"
 	ledgerpb "github.com/robertodantas/lnpay/proto/gen/interfaces/ledger"
 	"google.golang.org/grpc"
 )
@@ -91,7 +91,7 @@ func main() {
 
 	// Connect to Redis stream
 	log.Println("Connecting to Redis...")
-	streamClient, err := library.NewStreamClientFromEnv()
+	streamClient, err := internal.NewStreamClientFromEnv()
 	if err != nil {
 		log.Fatalf("Failed to create Redis stream client: %v", err)
 	}

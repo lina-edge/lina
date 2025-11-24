@@ -11,21 +11,21 @@ import (
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/protobuf/encoding/protojson"
 
-	"github.com/robertodantas/lnpay/library"
+	"github.com/robertodantas/lnpay/internal"
 	consumptionpb "github.com/robertodantas/lnpay/proto/gen/model/consumption"
 	ledgermodel "github.com/robertodantas/lnpay/proto/gen/model/ledger"
 )
 
 // StreamHandler handles Redis stream operations for the ledger service
 type StreamHandler struct {
-	streamClient *library.StreamClient
+	streamClient *internal.StreamClient
 	repo         *LedgerRepository
 	consumerName string
 	groupName    string
 }
 
 // NewStreamHandler creates a new stream handler
-func NewStreamHandler(streamClient *library.StreamClient, repo *LedgerRepository) *StreamHandler {
+func NewStreamHandler(streamClient *internal.StreamClient, repo *LedgerRepository) *StreamHandler {
 	return &StreamHandler{
 		streamClient: streamClient,
 		repo:         repo,

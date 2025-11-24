@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/robertodantas/lnpay/library"
+	"github.com/robertodantas/lnpay/internal"
 )
 
 type Config struct {
@@ -15,12 +15,12 @@ type Config struct {
 
 func LoadConfig() Config {
 	return Config{
-		DBPath:        library.GetEnv("DB_PATH", "consumption.db"),
-		ServiceToken:  library.GetEnv("SERVICE_TOKEN", "dev-token"),
-		ListenAddr:    library.GetEnv("LISTEN_ADDR", ":8080"),
-		GRPCAddr:      library.GetEnv("GRPC_ADDR", ":9090"),
-		MaxPageSize:   library.IntEnv("MAX_PAGE_SIZE", 200),
-		BusyTimeoutMS: library.IntEnv("BUSY_TIMEOUT_MS", 5000),
+		DBPath:        internal.GetEnv("DB_PATH", "consumption.db"),
+		ServiceToken:  internal.GetEnv("SERVICE_TOKEN", "dev-token"),
+		ListenAddr:    internal.GetEnv("LISTEN_ADDR", ":8080"),
+		GRPCAddr:      internal.GetEnv("GRPC_ADDR", ":9090"),
+		MaxPageSize:   internal.IntEnv("MAX_PAGE_SIZE", 200),
+		BusyTimeoutMS: internal.IntEnv("BUSY_TIMEOUT_MS", 5000),
 	}
 }
 

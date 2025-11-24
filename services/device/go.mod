@@ -6,7 +6,7 @@ require (
 	github.com/eclipse/paho.mqtt.golang v1.5.1
 	github.com/gin-gonic/gin v1.11.0
 	github.com/redis/go-redis/v9 v9.17.0
-	github.com/robertodantas/lnpay/library v0.0.0-00010101000000-000000000000
+	github.com/robertodantas/lnpay/internal v0.0.0-00010101000000-000000000000
 	github.com/robertodantas/lnpay/proto v0.0.0-00010101000000-000000000000
 	google.golang.org/grpc v1.66.0
 	google.golang.org/protobuf v1.36.9
@@ -59,6 +59,6 @@ require (
 )
 
 // Local dependencies - adjust paths as needed
-replace github.com/robertodantas/lnpay/proto => ../../proto
+replace github.com/robertodantas/lnpay/proto => ../proto
 
-replace github.com/robertodantas/lnpay/library => ../../library
+replace github.com/robertodantas/lnpay/internal => ../internal

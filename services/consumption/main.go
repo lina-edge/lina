@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/robertodantas/lnpay/library"
+	"github.com/robertodantas/lnpay/internal"
 )
 
 func main() {
@@ -20,7 +20,7 @@ func main() {
 
 	// Connect to Redis stream
 	log.Println("Connecting to Redis...")
-	streamClient, err := library.NewStreamClientFromEnv()
+	streamClient, err := internal.NewStreamClientFromEnv()
 	if err != nil {
 		log.Fatalf("Failed to create Redis stream client: %v", err)
 	}
