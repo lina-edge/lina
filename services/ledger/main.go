@@ -10,12 +10,15 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/robertodantas/lnpay/library"
 	ledgerpb "github.com/robertodantas/lnpay/proto/gen/interfaces/ledger"
 	"google.golang.org/grpc"
 	_ "modernc.org/sqlite"
@@ -552,6 +555,36 @@ func main() {
 
 	svc := NewService(cfg, db)
 
+	// Connect to Redis stream
+	log.Println("Connecting to Redis...")
+	streamClient, err := library.NewStreamClientFromEnv()
+	if err != nil {
+		log.Fatalf("Failed to create Redis stream client: %v", err)
+	}
+	defer streamClient.Close()
+	log.Println("Redis stream client connected successfully")
+
+	// Create stream handler
+	streamHandler := NewStreamHandler(streamClient, svc)
+
+	// Create context for graceful shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start consumption consumer in a goroutine
+	go func() {
+		if err := streamHandler.StartConsumptionConsumer(ctx); err != nil && err != context.Canceled {
+			log.Printf("Consumption consumer error: %v", err)
+		}
+	}()
+
+	// Start expiration checker in a goroutine
+	go func() {
+		if err := streamHandler.StartExpirationChecker(ctx); err != nil && err != context.Canceled {
+			log.Printf("Expiration checker error: %v", err)
+		}
+	}()
+
 	// Start gRPC server in a goroutine
 	go func() {
 		lis, err := net.Listen("tcp", cfg.GRPCAddr)
@@ -560,7 +593,7 @@ func main() {
 		}
 
 		grpcServer := grpc.NewServer()
-		eastWestServer := NewEastWestServer(svc)
+		eastWestServer := NewEastWestServer(svc, streamHandler)
 		ledgerpb.RegisterLedgerServiceServer(grpcServer, eastWestServer)
 
 		log.Printf("gRPC server listening on %s", cfg.GRPCAddr)
@@ -583,7 +616,20 @@ func main() {
 	r.GET("/entries", svc.listEntries)
 
 	log.Printf("Ledger Service HTTP listening on %s (DB=%s)", cfg.ListenAddr, cfg.DBPath)
-	if err := r.Run(cfg.ListenAddr); err != nil {
-		log.Fatal(err)
-	}
+
+	// Start HTTP server in a goroutine
+	go func() {
+		if err := r.Run(cfg.ListenAddr); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("HTTP server error: %v", err)
+		}
+	}()
+
+	// Wait for interrupt signal to gracefully shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	<-sigChan
+
+	log.Println("Shutting down ledger service...")
+	cancel() // Cancel context to stop consumers
+	log.Println("Ledger service stopped")
 }

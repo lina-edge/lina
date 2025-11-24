@@ -8,6 +8,12 @@ FROM golang:1.25-alpine AS builder
     # Copy proto module to match project structure
     COPY proto/go.mod ./proto/
     COPY proto/gen ./proto/gen
+    
+    # Copy library module to match project structure
+    COPY library/go.mod ./library/
+    COPY library/*.go ./library/
+    # If your library directory has subdirectories to include, copy as needed:
+    COPY library/ ./library/
 
     # Copy service files to services/ directory to match project structure
     COPY services/${SERVICE}/go.mod services/${SERVICE}/go.sum ./services/${SERVICE}/

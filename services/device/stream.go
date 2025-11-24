@@ -1,59 +1,32 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
-	"strconv"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/protobuf/encoding/protojson"
 
+	"github.com/robertodantas/lnpay/library"
 	devicepb "github.com/robertodantas/lnpay/proto/gen/model/device"
 	mqttpb "github.com/robertodantas/lnpay/proto/gen/model/mqtt"
 )
 
-// StreamClient wraps the Redis client for stream operations
+// StreamClient wraps the library StreamClient with device-specific methods
 type StreamClient struct {
-	client *redis.Client
-	ctx    context.Context
+	*library.StreamClient
 }
 
-// NewStreamClient creates a new Redis stream client
+// NewStreamClient creates a new Redis stream client using the library
 func NewStreamClient() (*StreamClient, error) {
-	host := getEnv("REDIS_HOST", "redis")
-	port := getEnv("REDIS_PORT", "6379")
-	password := getEnv("REDIS_PASSWORD", "")
-	dbStr := getEnv("REDIS_DB", "0")
-
-	db, err := strconv.Atoi(dbStr)
+	libClient, err := library.NewStreamClientFromEnv()
 	if err != nil {
-		return nil, fmt.Errorf("invalid REDIS_DB value: %w", err)
+		return nil, err
 	}
-
-	addr := fmt.Sprintf("%s:%s", host, port)
-	log.Printf("Connecting to Redis at %s (db: %d)...", addr, db)
-
-	opts := &redis.Options{
-		Addr:     addr,
-		Password: password,
-		DB:       db,
-	}
-
-	client := redis.NewClient(opts)
-	ctx := context.Background()
-
-	// Test connection
-	if err := client.Ping(ctx).Err(); err != nil {
-		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
-	}
-
-	log.Println("Connected to Redis successfully")
 
 	return &StreamClient{
-		client: client,
-		ctx:    ctx,
+		StreamClient: libClient,
 	}, nil
 }
 
@@ -112,7 +85,7 @@ func (sc *StreamClient) PublishDeviceUsageReportedEvent(payload *mqttpb.UsagePay
 	}
 
 	// Use XADD to add entry to stream
-	result := sc.client.XAdd(sc.ctx, &redis.XAddArgs{
+	result := sc.Client().XAdd(sc.Context(), &redis.XAddArgs{
 		Stream: streamName,
 		Values: values,
 	})
@@ -125,11 +98,7 @@ func (sc *StreamClient) PublishDeviceUsageReportedEvent(payload *mqttpb.UsagePay
 	return nil
 }
 
-// Close closes the Redis client connection
+// Close closes the Redis client connection (delegates to embedded library client)
 func (sc *StreamClient) Close() error {
-	if err := sc.client.Close(); err != nil {
-		return fmt.Errorf("failed to close Redis client: %w", err)
-	}
-	log.Println("Redis client closed")
-	return nil
+	return sc.StreamClient.Close()
 }

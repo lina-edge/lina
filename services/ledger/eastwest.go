@@ -17,12 +17,16 @@ import (
 // EastWestServer implements the LedgerService gRPC server
 type EastWestServer struct {
 	ledgerpb.UnimplementedLedgerServiceServer
-	svc *Service
+	svc           *Service
+	streamHandler *StreamHandler
 }
 
 // NewEastWestServer creates a new east-west gRPC server
-func NewEastWestServer(svc *Service) *EastWestServer {
-	return &EastWestServer{svc: svc}
+func NewEastWestServer(svc *Service, streamHandler *StreamHandler) *EastWestServer {
+	return &EastWestServer{
+		svc:           svc,
+		streamHandler: streamHandler,
+	}
 }
 
 // CreateOrGetAuthorization creates a new authorization or returns the existing one based on request_id
@@ -127,6 +131,14 @@ func (s *EastWestServer) CreateOrGetAuthorization(ctx context.Context, req *ledg
 		RemainingMsat:   req.RequestMsat,
 		IssuedAt:        issuedAt,
 		ExpiresAt:       expiresAt,
+	}
+
+	// Publish AuthorizationCreated event
+	if s.streamHandler != nil {
+		if err := s.streamHandler.PublishAuthorizationCreated(ctx, auth); err != nil {
+			// Log error but don't fail the request
+			// TODO: consider adding retry logic or dead letter queue
+		}
 	}
 
 	return &ledgermodel.CreateAuthorizationResponse{
