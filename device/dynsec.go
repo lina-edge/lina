@@ -454,6 +454,9 @@ func (d *DynSecService) ProvisionDevice(deviceID string) error {
 		fmt.Sprintf("/devices/%s/response/authorize", deviceID),
 		fmt.Sprintf("/devices/%s/response/invoice", deviceID),
 		fmt.Sprintf("/devices/%s/events/invoice", deviceID),
+		// Allow wildcard subscription for topic discovery (e.g., MQTT Explorer)
+		// This allows the device to see all topics under its own path only
+		fmt.Sprintf("/devices/%s/#", deviceID),
 	}
 
 	log.Printf("Adding %d subscribe ACLs for role: %s", len(subscribeTopics), roleName)
