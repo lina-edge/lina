@@ -105,13 +105,31 @@ func (nb *NorthboundInterface) createDevice(c *gin.Context) {
 		Timestamp:            timestamp,
 	}
 
-	// Save to database
-	if err := nb.repo.CreateDevice(device); err != nil {
-		log.Printf("Failed to create device in database: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "failed to create device",
-		})
-		return
+	// Check if device already exists
+	_, err = nb.repo.GetDevice(device.DeviceID)
+	deviceExists := err == nil
+
+	if deviceExists {
+		// Update existing device in database
+		log.Printf("Device %s already exists, updating...", device.DeviceID)
+		if err := nb.repo.UpdateDevice(device); err != nil {
+			log.Printf("Failed to update device in database: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "failed to update device",
+			})
+			return
+		}
+		log.Printf("Device %s updated in database", device.DeviceID)
+	} else {
+		// Create new device in database
+		if err := nb.repo.CreateDevice(device); err != nil {
+			log.Printf("Failed to create device in database: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "failed to create device",
+			})
+			return
+		}
+		log.Printf("Device %s created in database", device.DeviceID)
 	}
 
 	// Trigger dynsec provisioning (using device_secret as password)
@@ -131,7 +149,12 @@ func (nb *NorthboundInterface) createDevice(c *gin.Context) {
 		log.Printf("Device config published to /devices/%s/config", device.DeviceID)
 	}
 
-	c.JSON(http.StatusCreated, device)
+	// Return 200 OK for updates, 201 Created for new devices
+	if deviceExists {
+		c.JSON(http.StatusOK, device)
+	} else {
+		c.JSON(http.StatusCreated, device)
+	}
 }
 
 // listDevices handles GET /devices

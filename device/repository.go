@@ -120,6 +120,49 @@ func (r *DeviceRepository) GetDevice(deviceID string) (*Device, error) {
 	return &device, nil
 }
 
+// UpdateDevice updates an existing device in the database
+func (r *DeviceRepository) UpdateDevice(device *Device) error {
+	query := `
+	UPDATE devices SET
+		unit = ?,
+		unit_price = ?,
+		pricing_unit = ?,
+		reporting_strategy = ?,
+		reporting_interval = ?,
+		heartbeat_interval = ?,
+		authorize_request_msat = ?,
+		timestamp = ?
+	WHERE device_id = ?`
+
+	result, err := r.db.Exec(
+		query,
+		device.Unit,
+		device.UnitPrice,
+		device.PricingUnit,
+		device.ReportingStrategy,
+		device.ReportingInterval,
+		device.HeartbeatInterval,
+		device.AuthorizeRequestMsat,
+		device.Timestamp.Format(time.RFC3339),
+		device.DeviceID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update device: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("device not found: %s", device.DeviceID)
+	}
+
+	log.Printf("Device updated in database: %s", device.DeviceID)
+	return nil
+}
+
 // ListDevices retrieves all devices
 func (r *DeviceRepository) ListDevices() ([]*Device, error) {
 	query := `
