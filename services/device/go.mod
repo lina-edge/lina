@@ -53,4 +53,4 @@ require (
 )
 
 // Local proto dependency - adjust path as needed
-replace github.com/robertodantas/lnpay/proto => ../proto
+replace github.com/robertodantas/lnpay/proto => ../../proto

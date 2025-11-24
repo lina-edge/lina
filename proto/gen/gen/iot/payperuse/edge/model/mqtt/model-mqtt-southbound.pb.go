@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.10
 // 	protoc        v5.29.4
-// source: model/model-mqtt-device-service.proto
+// source: model/model-mqtt-southbound.proto
 
 package mqtt
 
@@ -54,11 +54,11 @@ func (x DeviceStatus) String() string {
 }
 
 func (DeviceStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_model_model_mqtt_device_service_proto_enumTypes[0].Descriptor()
+	return file_model_model_mqtt_southbound_proto_enumTypes[0].Descriptor()
 }
 
 func (DeviceStatus) Type() protoreflect.EnumType {
-	return &file_model_model_mqtt_device_service_proto_enumTypes[0]
+	return &file_model_model_mqtt_southbound_proto_enumTypes[0]
 }
 
 func (x DeviceStatus) Number() protoreflect.EnumNumber {
@@ -67,7 +67,7 @@ func (x DeviceStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use DeviceStatus.Descriptor instead.
 func (DeviceStatus) EnumDescriptor() ([]byte, []int) {
-	return file_model_model_mqtt_device_service_proto_rawDescGZIP(), []int{0}
+	return file_model_model_mqtt_southbound_proto_rawDescGZIP(), []int{0}
 }
 
 type ReportingStrategy int32
@@ -106,11 +106,11 @@ func (x ReportingStrategy) String() string {
 }
 
 func (ReportingStrategy) Descriptor() protoreflect.EnumDescriptor {
-	return file_model_model_mqtt_device_service_proto_enumTypes[1].Descriptor()
+	return file_model_model_mqtt_southbound_proto_enumTypes[1].Descriptor()
 }
 
 func (ReportingStrategy) Type() protoreflect.EnumType {
-	return &file_model_model_mqtt_device_service_proto_enumTypes[1]
+	return &file_model_model_mqtt_southbound_proto_enumTypes[1]
 }
 
 func (x ReportingStrategy) Number() protoreflect.EnumNumber {
@@ -119,7 +119,7 @@ func (x ReportingStrategy) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ReportingStrategy.Descriptor instead.
 func (ReportingStrategy) EnumDescriptor() ([]byte, []int) {
-	return file_model_model_mqtt_device_service_proto_rawDescGZIP(), []int{1}
+	return file_model_model_mqtt_southbound_proto_rawDescGZIP(), []int{1}
 }
 
 type ControlCommand int32
@@ -170,11 +170,11 @@ func (x ControlCommand) String() string {
 }
 
 func (ControlCommand) Descriptor() protoreflect.EnumDescriptor {
-	return file_model_model_mqtt_device_service_proto_enumTypes[2].Descriptor()
+	return file_model_model_mqtt_southbound_proto_enumTypes[2].Descriptor()
 }
 
 func (ControlCommand) Type() protoreflect.EnumType {
-	return &file_model_model_mqtt_device_service_proto_enumTypes[2]
+	return &file_model_model_mqtt_southbound_proto_enumTypes[2]
 }
 
 func (x ControlCommand) Number() protoreflect.EnumNumber {
@@ -183,7 +183,7 @@ func (x ControlCommand) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ControlCommand.Descriptor instead.
 func (ControlCommand) EnumDescriptor() ([]byte, []int) {
-	return file_model_model_mqtt_device_service_proto_rawDescGZIP(), []int{2}
+	return file_model_model_mqtt_southbound_proto_rawDescGZIP(), []int{2}
 }
 
 // Response: devices/{id}/response/authorize (Server → Device)
@@ -223,11 +223,11 @@ func (x AuthorizationStatus) String() string {
 }
 
 func (AuthorizationStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_model_model_mqtt_device_service_proto_enumTypes[3].Descriptor()
+	return file_model_model_mqtt_southbound_proto_enumTypes[3].Descriptor()
 }
 
 func (AuthorizationStatus) Type() protoreflect.EnumType {
-	return &file_model_model_mqtt_device_service_proto_enumTypes[3]
+	return &file_model_model_mqtt_southbound_proto_enumTypes[3]
 }
 
 func (x AuthorizationStatus) Number() protoreflect.EnumNumber {
@@ -236,7 +236,7 @@ func (x AuthorizationStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AuthorizationStatus.Descriptor instead.
 func (AuthorizationStatus) EnumDescriptor() ([]byte, []int) {
-	return file_model_model_mqtt_device_service_proto_rawDescGZIP(), []int{3}
+	return file_model_model_mqtt_southbound_proto_rawDescGZIP(), []int{3}
 }
 
 // Response: devices/{id}/response/invoice (Server → Device)
@@ -276,11 +276,11 @@ func (x InvoiceStatus) String() string {
 }
 
 func (InvoiceStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_model_model_mqtt_device_service_proto_enumTypes[4].Descriptor()
+	return file_model_model_mqtt_southbound_proto_enumTypes[4].Descriptor()
 }
 
 func (InvoiceStatus) Type() protoreflect.EnumType {
-	return &file_model_model_mqtt_device_service_proto_enumTypes[4]
+	return &file_model_model_mqtt_southbound_proto_enumTypes[4]
 }
 
 func (x InvoiceStatus) Number() protoreflect.EnumNumber {
@@ -289,7 +289,7 @@ func (x InvoiceStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use InvoiceStatus.Descriptor instead.
 func (InvoiceStatus) EnumDescriptor() ([]byte, []int) {
-	return file_model_model_mqtt_device_service_proto_rawDescGZIP(), []int{4}
+	return file_model_model_mqtt_southbound_proto_rawDescGZIP(), []int{4}
 }
 
 type HeartbeatPayload struct {
@@ -303,7 +303,7 @@ type HeartbeatPayload struct {
 
 func (x *HeartbeatPayload) Reset() {
 	*x = HeartbeatPayload{}
-	mi := &file_model_model_mqtt_device_service_proto_msgTypes[0]
+	mi := &file_model_model_mqtt_southbound_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -315,7 +315,7 @@ func (x *HeartbeatPayload) String() string {
 func (*HeartbeatPayload) ProtoMessage() {}
 
 func (x *HeartbeatPayload) ProtoReflect() protoreflect.Message {
-	mi := &file_model_model_mqtt_device_service_proto_msgTypes[0]
+	mi := &file_model_model_mqtt_southbound_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -328,7 +328,7 @@ func (x *HeartbeatPayload) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeartbeatPayload.ProtoReflect.Descriptor instead.
 func (*HeartbeatPayload) Descriptor() ([]byte, []int) {
-	return file_model_model_mqtt_device_service_proto_rawDescGZIP(), []int{0}
+	return file_model_model_mqtt_southbound_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *HeartbeatPayload) GetDeviceId() string {
@@ -369,7 +369,7 @@ type ConfigPayload struct {
 
 func (x *ConfigPayload) Reset() {
 	*x = ConfigPayload{}
-	mi := &file_model_model_mqtt_device_service_proto_msgTypes[1]
+	mi := &file_model_model_mqtt_southbound_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -381,7 +381,7 @@ func (x *ConfigPayload) String() string {
 func (*ConfigPayload) ProtoMessage() {}
 
 func (x *ConfigPayload) ProtoReflect() protoreflect.Message {
-	mi := &file_model_model_mqtt_device_service_proto_msgTypes[1]
+	mi := &file_model_model_mqtt_southbound_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -394,7 +394,7 @@ func (x *ConfigPayload) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConfigPayload.ProtoReflect.Descriptor instead.
 func (*ConfigPayload) Descriptor() ([]byte, []int) {
-	return file_model_model_mqtt_device_service_proto_rawDescGZIP(), []int{1}
+	return file_model_model_mqtt_southbound_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *ConfigPayload) GetDeviceId() string {
@@ -472,7 +472,7 @@ type ControlPayload struct {
 
 func (x *ControlPayload) Reset() {
 	*x = ControlPayload{}
-	mi := &file_model_model_mqtt_device_service_proto_msgTypes[2]
+	mi := &file_model_model_mqtt_southbound_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -484,7 +484,7 @@ func (x *ControlPayload) String() string {
 func (*ControlPayload) ProtoMessage() {}
 
 func (x *ControlPayload) ProtoReflect() protoreflect.Message {
-	mi := &file_model_model_mqtt_device_service_proto_msgTypes[2]
+	mi := &file_model_model_mqtt_southbound_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -497,7 +497,7 @@ func (x *ControlPayload) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ControlPayload.ProtoReflect.Descriptor instead.
 func (*ControlPayload) Descriptor() ([]byte, []int) {
-	return file_model_model_mqtt_device_service_proto_rawDescGZIP(), []int{2}
+	return file_model_model_mqtt_southbound_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ControlPayload) GetCommand() ControlCommand {
@@ -541,7 +541,7 @@ type BalancePayload struct {
 
 func (x *BalancePayload) Reset() {
 	*x = BalancePayload{}
-	mi := &file_model_model_mqtt_device_service_proto_msgTypes[3]
+	mi := &file_model_model_mqtt_southbound_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -553,7 +553,7 @@ func (x *BalancePayload) String() string {
 func (*BalancePayload) ProtoMessage() {}
 
 func (x *BalancePayload) ProtoReflect() protoreflect.Message {
-	mi := &file_model_model_mqtt_device_service_proto_msgTypes[3]
+	mi := &file_model_model_mqtt_southbound_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -566,7 +566,7 @@ func (x *BalancePayload) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BalancePayload.ProtoReflect.Descriptor instead.
 func (*BalancePayload) Descriptor() ([]byte, []int) {
-	return file_model_model_mqtt_device_service_proto_rawDescGZIP(), []int{3}
+	return file_model_model_mqtt_southbound_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *BalancePayload) GetDeviceId() string {
@@ -618,7 +618,7 @@ type UsagePayload struct {
 
 func (x *UsagePayload) Reset() {
 	*x = UsagePayload{}
-	mi := &file_model_model_mqtt_device_service_proto_msgTypes[4]
+	mi := &file_model_model_mqtt_southbound_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -630,7 +630,7 @@ func (x *UsagePayload) String() string {
 func (*UsagePayload) ProtoMessage() {}
 
 func (x *UsagePayload) ProtoReflect() protoreflect.Message {
-	mi := &file_model_model_mqtt_device_service_proto_msgTypes[4]
+	mi := &file_model_model_mqtt_southbound_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -643,7 +643,7 @@ func (x *UsagePayload) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UsagePayload.ProtoReflect.Descriptor instead.
 func (*UsagePayload) Descriptor() ([]byte, []int) {
-	return file_model_model_mqtt_device_service_proto_rawDescGZIP(), []int{4}
+	return file_model_model_mqtt_southbound_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *UsagePayload) GetDeviceId() string {
@@ -702,7 +702,7 @@ type AuthorizationRequestPayload struct {
 
 func (x *AuthorizationRequestPayload) Reset() {
 	*x = AuthorizationRequestPayload{}
-	mi := &file_model_model_mqtt_device_service_proto_msgTypes[5]
+	mi := &file_model_model_mqtt_southbound_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -714,7 +714,7 @@ func (x *AuthorizationRequestPayload) String() string {
 func (*AuthorizationRequestPayload) ProtoMessage() {}
 
 func (x *AuthorizationRequestPayload) ProtoReflect() protoreflect.Message {
-	mi := &file_model_model_mqtt_device_service_proto_msgTypes[5]
+	mi := &file_model_model_mqtt_southbound_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -727,7 +727,7 @@ func (x *AuthorizationRequestPayload) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuthorizationRequestPayload.ProtoReflect.Descriptor instead.
 func (*AuthorizationRequestPayload) Descriptor() ([]byte, []int) {
-	return file_model_model_mqtt_device_service_proto_rawDescGZIP(), []int{5}
+	return file_model_model_mqtt_southbound_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *AuthorizationRequestPayload) GetDeviceId() string {
@@ -786,7 +786,7 @@ type AuthorizationResponsePayload struct {
 
 func (x *AuthorizationResponsePayload) Reset() {
 	*x = AuthorizationResponsePayload{}
-	mi := &file_model_model_mqtt_device_service_proto_msgTypes[6]
+	mi := &file_model_model_mqtt_southbound_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -798,7 +798,7 @@ func (x *AuthorizationResponsePayload) String() string {
 func (*AuthorizationResponsePayload) ProtoMessage() {}
 
 func (x *AuthorizationResponsePayload) ProtoReflect() protoreflect.Message {
-	mi := &file_model_model_mqtt_device_service_proto_msgTypes[6]
+	mi := &file_model_model_mqtt_southbound_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -811,7 +811,7 @@ func (x *AuthorizationResponsePayload) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuthorizationResponsePayload.ProtoReflect.Descriptor instead.
 func (*AuthorizationResponsePayload) Descriptor() ([]byte, []int) {
-	return file_model_model_mqtt_device_service_proto_rawDescGZIP(), []int{6}
+	return file_model_model_mqtt_southbound_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *AuthorizationResponsePayload) GetDeviceId() string {
@@ -898,7 +898,7 @@ type InvoiceRequestPayload struct {
 
 func (x *InvoiceRequestPayload) Reset() {
 	*x = InvoiceRequestPayload{}
-	mi := &file_model_model_mqtt_device_service_proto_msgTypes[7]
+	mi := &file_model_model_mqtt_southbound_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -910,7 +910,7 @@ func (x *InvoiceRequestPayload) String() string {
 func (*InvoiceRequestPayload) ProtoMessage() {}
 
 func (x *InvoiceRequestPayload) ProtoReflect() protoreflect.Message {
-	mi := &file_model_model_mqtt_device_service_proto_msgTypes[7]
+	mi := &file_model_model_mqtt_southbound_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -923,7 +923,7 @@ func (x *InvoiceRequestPayload) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InvoiceRequestPayload.ProtoReflect.Descriptor instead.
 func (*InvoiceRequestPayload) Descriptor() ([]byte, []int) {
-	return file_model_model_mqtt_device_service_proto_rawDescGZIP(), []int{7}
+	return file_model_model_mqtt_southbound_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *InvoiceRequestPayload) GetDeviceId() string {
@@ -976,7 +976,7 @@ type InvoiceResponsePayload struct {
 
 func (x *InvoiceResponsePayload) Reset() {
 	*x = InvoiceResponsePayload{}
-	mi := &file_model_model_mqtt_device_service_proto_msgTypes[8]
+	mi := &file_model_model_mqtt_southbound_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -988,7 +988,7 @@ func (x *InvoiceResponsePayload) String() string {
 func (*InvoiceResponsePayload) ProtoMessage() {}
 
 func (x *InvoiceResponsePayload) ProtoReflect() protoreflect.Message {
-	mi := &file_model_model_mqtt_device_service_proto_msgTypes[8]
+	mi := &file_model_model_mqtt_southbound_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1001,7 +1001,7 @@ func (x *InvoiceResponsePayload) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InvoiceResponsePayload.ProtoReflect.Descriptor instead.
 func (*InvoiceResponsePayload) Descriptor() ([]byte, []int) {
-	return file_model_model_mqtt_device_service_proto_rawDescGZIP(), []int{8}
+	return file_model_model_mqtt_southbound_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *InvoiceResponsePayload) GetDeviceId() string {
@@ -1068,7 +1068,7 @@ type InvoiceEventPayload struct {
 
 func (x *InvoiceEventPayload) Reset() {
 	*x = InvoiceEventPayload{}
-	mi := &file_model_model_mqtt_device_service_proto_msgTypes[9]
+	mi := &file_model_model_mqtt_southbound_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1080,7 +1080,7 @@ func (x *InvoiceEventPayload) String() string {
 func (*InvoiceEventPayload) ProtoMessage() {}
 
 func (x *InvoiceEventPayload) ProtoReflect() protoreflect.Message {
-	mi := &file_model_model_mqtt_device_service_proto_msgTypes[9]
+	mi := &file_model_model_mqtt_southbound_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1093,7 +1093,7 @@ func (x *InvoiceEventPayload) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InvoiceEventPayload.ProtoReflect.Descriptor instead.
 func (*InvoiceEventPayload) Descriptor() ([]byte, []int) {
-	return file_model_model_mqtt_device_service_proto_rawDescGZIP(), []int{9}
+	return file_model_model_mqtt_southbound_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *InvoiceEventPayload) GetDeviceId() string {
@@ -1138,11 +1138,11 @@ func (x *InvoiceEventPayload) GetTimestamp() string {
 	return ""
 }
 
-var File_model_model_mqtt_device_service_proto protoreflect.FileDescriptor
+var File_model_model_mqtt_southbound_proto protoreflect.FileDescriptor
 
-const file_model_model_mqtt_device_service_proto_rawDesc = "" +
+const file_model_model_mqtt_southbound_proto_rawDesc = "" +
 	"\n" +
-	"%model/model-mqtt-device-service.proto\x12\x1diot.payperuse.edge.model.mqtt\"\x92\x01\n" +
+	"!model/model-mqtt-southbound.proto\x12\x1diot.payperuse.edge.model.mqtt\"\x92\x01\n" +
 	"\x10HeartbeatPayload\x12\x1b\n" +
 	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12C\n" +
 	"\x06status\x18\x02 \x01(\x0e2+.iot.payperuse.edge.model.mqtt.DeviceStatusR\x06status\x12\x1c\n" +
@@ -1256,20 +1256,20 @@ const file_model_model_mqtt_device_service_proto_rawDesc = "" +
 	"\x16INVOICE_STATUS_EXPIRED\x10\x03B#Z!gen/iot/payperuse/edge/model/mqttb\x06proto3"
 
 var (
-	file_model_model_mqtt_device_service_proto_rawDescOnce sync.Once
-	file_model_model_mqtt_device_service_proto_rawDescData []byte
+	file_model_model_mqtt_southbound_proto_rawDescOnce sync.Once
+	file_model_model_mqtt_southbound_proto_rawDescData []byte
 )
 
-func file_model_model_mqtt_device_service_proto_rawDescGZIP() []byte {
-	file_model_model_mqtt_device_service_proto_rawDescOnce.Do(func() {
-		file_model_model_mqtt_device_service_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_model_model_mqtt_device_service_proto_rawDesc), len(file_model_model_mqtt_device_service_proto_rawDesc)))
+func file_model_model_mqtt_southbound_proto_rawDescGZIP() []byte {
+	file_model_model_mqtt_southbound_proto_rawDescOnce.Do(func() {
+		file_model_model_mqtt_southbound_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_model_model_mqtt_southbound_proto_rawDesc), len(file_model_model_mqtt_southbound_proto_rawDesc)))
 	})
-	return file_model_model_mqtt_device_service_proto_rawDescData
+	return file_model_model_mqtt_southbound_proto_rawDescData
 }
 
-var file_model_model_mqtt_device_service_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_model_model_mqtt_device_service_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
-var file_model_model_mqtt_device_service_proto_goTypes = []any{
+var file_model_model_mqtt_southbound_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
+var file_model_model_mqtt_southbound_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_model_model_mqtt_southbound_proto_goTypes = []any{
 	(DeviceStatus)(0),                    // 0: iot.payperuse.edge.model.mqtt.DeviceStatus
 	(ReportingStrategy)(0),               // 1: iot.payperuse.edge.model.mqtt.ReportingStrategy
 	(ControlCommand)(0),                  // 2: iot.payperuse.edge.model.mqtt.ControlCommand
@@ -1286,7 +1286,7 @@ var file_model_model_mqtt_device_service_proto_goTypes = []any{
 	(*InvoiceResponsePayload)(nil),       // 13: iot.payperuse.edge.model.mqtt.InvoiceResponsePayload
 	(*InvoiceEventPayload)(nil),          // 14: iot.payperuse.edge.model.mqtt.InvoiceEventPayload
 }
-var file_model_model_mqtt_device_service_proto_depIdxs = []int32{
+var file_model_model_mqtt_southbound_proto_depIdxs = []int32{
 	0, // 0: iot.payperuse.edge.model.mqtt.HeartbeatPayload.status:type_name -> iot.payperuse.edge.model.mqtt.DeviceStatus
 	1, // 1: iot.payperuse.edge.model.mqtt.ConfigPayload.reporting_strategy:type_name -> iot.payperuse.edge.model.mqtt.ReportingStrategy
 	2, // 2: iot.payperuse.edge.model.mqtt.ControlPayload.command:type_name -> iot.payperuse.edge.model.mqtt.ControlCommand
@@ -1301,27 +1301,27 @@ var file_model_model_mqtt_device_service_proto_depIdxs = []int32{
 	0, // [0:7] is the sub-list for field type_name
 }
 
-func init() { file_model_model_mqtt_device_service_proto_init() }
-func file_model_model_mqtt_device_service_proto_init() {
-	if File_model_model_mqtt_device_service_proto != nil {
+func init() { file_model_model_mqtt_southbound_proto_init() }
+func file_model_model_mqtt_southbound_proto_init() {
+	if File_model_model_mqtt_southbound_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_model_model_mqtt_device_service_proto_rawDesc), len(file_model_model_mqtt_device_service_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_model_model_mqtt_southbound_proto_rawDesc), len(file_model_model_mqtt_southbound_proto_rawDesc)),
 			NumEnums:      5,
 			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_model_model_mqtt_device_service_proto_goTypes,
-		DependencyIndexes: file_model_model_mqtt_device_service_proto_depIdxs,
-		EnumInfos:         file_model_model_mqtt_device_service_proto_enumTypes,
-		MessageInfos:      file_model_model_mqtt_device_service_proto_msgTypes,
+		GoTypes:           file_model_model_mqtt_southbound_proto_goTypes,
+		DependencyIndexes: file_model_model_mqtt_southbound_proto_depIdxs,
+		EnumInfos:         file_model_model_mqtt_southbound_proto_enumTypes,
+		MessageInfos:      file_model_model_mqtt_southbound_proto_msgTypes,
 	}.Build()
-	File_model_model_mqtt_device_service_proto = out.File
-	file_model_model_mqtt_device_service_proto_goTypes = nil
-	file_model_model_mqtt_device_service_proto_depIdxs = nil
+	File_model_model_mqtt_southbound_proto = out.File
+	file_model_model_mqtt_southbound_proto_goTypes = nil
+	file_model_model_mqtt_southbound_proto_depIdxs = nil
 }

@@ -5,18 +5,17 @@ FROM golang:1.25-alpine AS builder
     ARG SERVICE
     WORKDIR /workspace
 
-    # Copy only the proto module files needed for the replace directive
-    # We need go.mod for the module and gen/ for the generated files
+    # Copy proto module to match project structure
     COPY proto/go.mod ./proto/
     COPY proto/gen ./proto/gen
 
-    # Copy go.mod and go.sum to the service directory to maintain relative paths
-    COPY ${SERVICE}/go.mod ${SERVICE}/go.sum ./${SERVICE}/
-    WORKDIR /workspace/${SERVICE}
+    # Copy service files to services/ directory to match project structure
+    COPY services/${SERVICE}/go.mod services/${SERVICE}/go.sum ./services/${SERVICE}/
+    WORKDIR /workspace/services/${SERVICE}
     RUN go mod download
 
     # Copy the rest of the application source code
-    COPY ${SERVICE} ./
+    COPY services/${SERVICE} ./
 
     # Build the Go application
     RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o myapp .
@@ -27,7 +26,7 @@ FROM alpine:latest
     ARG SERVICE
     WORKDIR /app
 
-    COPY --from=builder /workspace/${SERVICE}/myapp .
+    COPY --from=builder /workspace/services/${SERVICE}/myapp .
 
     EXPOSE 8080
 
