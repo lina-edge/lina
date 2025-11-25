@@ -101,6 +101,9 @@ func main() {
 
 	cfg := LoadConfig()
 
+	serviceCtx, serviceCancel := context.WithCancel(context.Background())
+	defer serviceCancel()
+
 	// Initialize device repository
 	repo, err := NewDeviceRepository(cfg.DBPath)
 	if err != nil {
@@ -181,6 +184,9 @@ func main() {
 		log.Fatalf("Failed to start southbound interface: %v", err)
 	}
 
+	// Start ledger balance subscriber to fan-out balance updates via MQTT
+	streamClient.StartLedgerBalanceSubscriber(serviceCtx, mqttClient)
+
 	log.Println("Device service is running. Press Ctrl+C to stop...")
 	log.Printf("Northbound REST API available at http://localhost%s", cfg.APIAddr)
 
@@ -190,6 +196,7 @@ func main() {
 	<-sigChan
 
 	log.Println("Shutting down device service...")
+	serviceCancel()
 
 	// Gracefully shutdown northbound server
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

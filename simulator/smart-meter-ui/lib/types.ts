@@ -99,3 +99,13 @@ export interface MQTTEvent {
   message: string
   type: "info" | "error" | "success"
 }
+
+export interface Authorization {
+  authorization_id: string
+  request_id: string
+  granted_msat: number
+  remaining_msat: number
+  issued_at: string
+  expires_at: string
+  status: "ACTIVE" | "EXPIRED" | "CONSUMED"
+}

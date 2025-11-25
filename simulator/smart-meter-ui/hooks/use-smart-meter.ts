@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useRef, useEffect } from "react"
-import type { Appliance, DeviceStatus, DeviceConfig, BalanceMessage, InvoiceResponse } from "@/lib/types"
+import type { Appliance, DeviceStatus, DeviceConfig, BalanceMessage, InvoiceResponse, Authorization } from "@/lib/types"
 import { useMQTT } from "./use-mqtt"
 
 const DEFAULT_APPLIANCES: Appliance[] = [
@@ -42,6 +42,7 @@ interface SmartMeterState {
   totalConsumption: number
   instantPower: number
   invoice: InvoiceResponse | null
+  authorizations: Authorization[]
   logs: Array<{ id: string; timestamp: string; message: string; type: "info" | "error" | "success" }>
 }
 
@@ -56,6 +57,7 @@ export function useSmartMeter() {
     totalConsumption: 0,
     instantPower: 0,
     invoice: null,
+    authorizations: [],
     logs: [],
   })
 
@@ -109,18 +111,26 @@ export function useSmartMeter() {
     // Subscribe to authorization responses
     mqtt.subscribeToAuthorizeResponse((response) => {
       if (response.status === "GRANTED") {
-        setState((prev) => ({
-          ...prev,
-          deviceStatus: "ONLINE",
-          balance: {
-            device_id: state.deviceId,
-            available_msat: response.granted_msat,
-            reserved_msat: 0,
-            total_msat: response.granted_msat,
-            timestamp: response.issued_at,
-          },
-        }))
-        addLog(`Authorization granted: ${response.granted_msat} msat`, "success")
+        setState((prev) => {
+          // Create authorization record - this is reserved balance
+          const authorization: Authorization = {
+            authorization_id: response.authorization_id,
+            request_id: response.request_id,
+            granted_msat: response.granted_msat,
+            remaining_msat: response.remaining_msat,
+            issued_at: response.issued_at,
+            expires_at: response.expires_at,
+            status: "ACTIVE",
+          }
+
+          // Don't calculate balance here - wait for backend to publish balance update
+          return {
+            ...prev,
+            deviceStatus: "ONLINE",
+            authorizations: [...prev.authorizations, authorization],
+          }
+        })
+        addLog(`Authorization granted: ${response.granted_msat} msat (reserved)`, "success")
       } else if (response.status === "REJECTED") {
         addLog(`Authorization rejected: ${response.request_id}`, "error")
       }
