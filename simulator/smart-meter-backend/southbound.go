@@ -123,7 +123,7 @@ func (sb *SouthboundInterface) Connect() {
 		b.addLog("MQTT connection failed: "+errMsg, "error")
 		if isMQTTAuthError(errMsg) {
 			b.addLog("MQTT credentials rejected - setting device OFFLINE", "error")
-			b.stopMeter()
+			b.shutdownMeter()
 		}
 		b.broadcastState()
 	}
@@ -225,7 +225,7 @@ func (sb *SouthboundInterface) handleAuthorizeResponse(client mqtt.Client, msg m
 		b.broadcastState()
 	case mqttmodel.AuthorizationStatus_AUTHORIZATION_STATUS_REJECTED:
 		b.addLog("Authorization rejected: "+response.RequestId, "error")
-		b.stopMeter()
+		b.shutdownMeter()
 	}
 }
 
@@ -287,8 +287,8 @@ func (sb *SouthboundInterface) handleControlMessage(client mqtt.Client, msg mqtt
 		if reason == "" {
 			reason = "REMOTE_COMMAND"
 		}
-		b.addLog("Command STOPreceived: "+reason, "info")
-		b.stopMeter()
+		b.addLog("Command STOP received: "+reason, "warning")
+		b.haltConsumption(reason)
 
 	case mqttmodel.ControlCommand_CONTROL_COMMAND_PAUSE:
 		reason := control.Reason
@@ -325,7 +325,7 @@ func (sb *SouthboundInterface) handleControlMessage(client mqtt.Client, msg mqtt
 		b.addLog("Command REBOOT received - restarting device", "info")
 		go func() {
 			// Stop current operations
-			b.stopMeter()
+			b.shutdownMeter()
 			// Wait a moment to simulate reboot
 			time.Sleep(2 * time.Second)
 			// Reconnect

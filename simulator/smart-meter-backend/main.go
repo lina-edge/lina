@@ -240,7 +240,7 @@ func (b *SmartMeterBackend) handleCommand(cmd WSCommand) {
 	case "start":
 		b.startMeter()
 	case "stop":
-		b.stopMeter()
+		b.shutdownMeter()
 	case "toggle_appliance":
 		var data struct {
 			ApplianceID string `json:"applianceId"`
@@ -383,7 +383,7 @@ func (b *SmartMeterBackend) completeStartupSequence() {
 	if err := b.waitForMQTTConnection(timeout); err != nil {
 		if errors.Is(err, errMQTTWaitTimeout) {
 			b.addLog("MQTT connection timeout during startup - reverting to OFFLINE", "error")
-			b.stopMeter()
+			b.shutdownMeter()
 		}
 		return
 	}
@@ -401,7 +401,7 @@ func (b *SmartMeterBackend) completeStartupSequence() {
 		log.Printf("Subscriptions ready, proceeding with startup sequence")
 	case <-time.After(10 * time.Second):
 		b.addLog("Timeout waiting for subscriptions - reverting to OFFLINE", "error")
-		b.stopMeter()
+		b.shutdownMeter()
 		return
 	}
 
@@ -436,8 +436,8 @@ func (b *SmartMeterBackend) waitForMQTTConnection(timeout time.Duration) error {
 	}
 }
 
-// Stop meter system
-func (b *SmartMeterBackend) stopMeter() {
+// Shutdown meter system completely (disconnect from MQTT and stop all operations)
+func (b *SmartMeterBackend) shutdownMeter() {
 	b.mu.Lock()
 	if b.state.DeviceStatus == "OFFLINE" {
 		b.mu.Unlock()
@@ -472,7 +472,27 @@ func (b *SmartMeterBackend) stopMeter() {
 	b.state.InstantPower = 0
 	b.mu.Unlock()
 
-	b.addLog("Meter system stopped", "info")
+	b.addLog("Meter system shut down", "info")
+	b.broadcastState()
+}
+
+// Halt consumption (stop all appliances but keep MQTT connection and device ONLINE)
+func (b *SmartMeterBackend) haltConsumption(reason string) {
+	b.mu.Lock()
+	if b.state.DeviceStatus != "ONLINE" {
+		b.mu.Unlock()
+		return
+	}
+
+	// Turn off all appliances but keep connection
+	for i := range b.state.Appliances {
+		b.state.Appliances[i].IsOn = false
+		b.state.Appliances[i].CurrentWatts = 0
+	}
+	b.state.InstantPower = 0
+	b.mu.Unlock()
+
+	b.addLog("Consumption halted: "+reason, "warning")
 	b.broadcastState()
 }
 
@@ -552,39 +572,13 @@ func (b *SmartMeterBackend) reportUsage() {
 	intervalSeconds := float64(b.state.Config.ReportingInterval)
 	kWhConsumed := (float64(b.state.InstantPower) / 1000.0) * (intervalSeconds / 3600.0)
 
-	// Calculate cost in msat
-	unitPrice := 10.0 // Parse from config if needed
-	costMsat := int64(kWhConsumed * unitPrice)
-
 	// Update total consumption
 	b.state.TotalConsumption += kWhConsumed
-
-	// Update balance (local simulation)
-	outOfFunds := false
-	if b.state.Balance != nil {
-		b.state.Balance.AvailableMsat = maxInt64(0, b.state.Balance.AvailableMsat-costMsat)
-		b.state.Balance.TotalMsat = maxInt64(0, b.state.Balance.TotalMsat-costMsat)
-		b.state.Balance.Timestamp = time.Now().Format(time.RFC3339)
-
-		// Check if out of funds
-		if b.state.Balance.AvailableMsat <= 0 {
-			outOfFunds = true
-			for i := range b.state.Appliances {
-				b.state.Appliances[i].IsOn = false
-				b.state.Appliances[i].CurrentWatts = 0
-			}
-			b.state.InstantPower = 0
-		}
-	}
 
 	reportID := generateID()
 	b.mu.Unlock()
 
-	if outOfFunds {
-		b.addLog("OUT OF FUNDS - All appliances stopped", "error")
-	}
-
-	// Publish usage report to MQTT
+	// Publish usage report to MQTT - backend will handle balance deduction
 	b.southbound.PublishUsageReport(reportID, kWhConsumed)
 	b.broadcastState()
 }
@@ -612,14 +606,7 @@ func (b *SmartMeterBackend) toggleAppliance(applianceID string) {
 		return
 	}
 
-	hasActiveAuth := b.hasActiveAuthorization()
-	if !appliance.IsOn && b.state.Balance != nil && b.state.Balance.AvailableMsat <= 0 && !hasActiveAuth {
-		name := appliance.Name
-		b.mu.Unlock()
-		b.addLog("Cannot turn on "+name+" - out of funds and no active authorization", "error")
-		return
-	}
-
+	// Toggle appliance - backend will send STOP command if out of funds
 	appliance.IsOn = !appliance.IsOn
 	status := "OFF"
 	if appliance.IsOn {
@@ -668,36 +655,18 @@ func (b *SmartMeterBackend) requestTopUp(amountMsat int64) {
 	})
 }
 
-// Simulate payment received
+// Simulate payment received - in real scenario, backend will update balance via MQTT
 func (b *SmartMeterBackend) simulatePayment() {
 	b.mu.Lock()
-
 	if b.state.Invoice == nil {
 		b.mu.Unlock()
 		return
 	}
-
-	amountMsat := b.state.Invoice.AmountMsat
-
-	if b.state.Balance == nil {
-		b.state.Balance = &BalanceMessage{
-			DeviceId:      b.state.DeviceID,
-			AvailableMsat: amountMsat,
-			ReservedMsat:  0,
-			TotalMsat:     amountMsat,
-			Timestamp:     time.Now().Format(time.RFC3339),
-		}
-	} else {
-		b.state.Balance.AvailableMsat += amountMsat
-		b.state.Balance.TotalMsat += amountMsat
-		b.state.Balance.Timestamp = time.Now().Format(time.RFC3339)
-	}
-
-	b.state.Invoice = nil
 	b.mu.Unlock()
 
-	b.addLog("Payment received!", "success")
-	b.broadcastState()
+	b.addLog("Payment simulation - waiting for backend to confirm", "info")
+	// In real implementation, payment would be detected by backend
+	// and balance update would come via MQTT balance message
 }
 
 // Clear invoice
