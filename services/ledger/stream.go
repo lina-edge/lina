@@ -144,8 +144,12 @@ func (sh *StreamHandler) processConsumption(ctx context.Context, recorded *consu
 	authorizationID, remainingMsat, grantedMsat, overflowMsat, _, _, err := sh.repo.GetActiveAuthorization(ctx, tx, deviceID, now)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			// No active authorization found - return error to skip event (will be retried later)
-			log.Printf("No active authorization found for device %s, skipping event (will retry)", deviceID)
+			// No active authorization found - publish failed event
+			log.Printf("No active authorization found for device %s", deviceID)
+			timestamp := time.Now().Format(time.RFC3339)
+			if err := sh.PublishAuthorizationDebitFailed(ctx, "", deviceID, recorded.GetDebitMsat(), 0, "NO_ACTIVE_AUTHORIZATION", timestamp); err != nil {
+				log.Printf("Failed to publish AuthorizationDebitFailed event: %v", err)
+			}
 			return fmt.Errorf("no active authorization found for device %s", deviceID)
 		}
 		return fmt.Errorf("failed to get authorization: %w", err)
@@ -213,6 +217,11 @@ func (sh *StreamHandler) processConsumption(ctx context.Context, recorded *consu
 
 	// Publish events based on new status
 	timestamp := time.Now().Format(time.RFC3339)
+
+	// Publish AuthorizationDebited event
+	if err := sh.PublishAuthorizationDebited(ctx, authorizationID, deviceID, debitAmount, newRemaining, timestamp); err != nil {
+		log.Printf("Failed to publish AuthorizationDebited event: %v", err)
+	}
 
 	if newStatus == "completed" {
 		// Publish AuthorizationCompleted event
@@ -317,6 +326,47 @@ func (sh *StreamHandler) PublishDeviceDebited(ctx context.Context, deviceID, aut
 		Type: ledgermodel.LedgerEventType_LEDGER_EVENT_TYPE_DEVICE_DEBITED,
 		Payload: &ledgermodel.LedgerEvent_DeviceDebited{
 			DeviceDebited: event,
+		},
+	}
+
+	return sh.publishLedgerEvent(ctx, ledgerEvent)
+}
+
+// PublishAuthorizationDebited publishes an AuthorizationDebitedEvent to event.ledger
+func (sh *StreamHandler) PublishAuthorizationDebited(ctx context.Context, authorizationID, deviceID string, amountMsat, remainingMsat int64, timestamp string) error {
+	event := &ledgermodel.AuthorizationDebitedEvent{
+		AuthorizationId: authorizationID,
+		DeviceId:        deviceID,
+		AmountMsat:      amountMsat,
+		RemainingMsat:   remainingMsat,
+		Timestamp:       timestamp,
+	}
+
+	ledgerEvent := &ledgermodel.LedgerEvent{
+		Type: ledgermodel.LedgerEventType_LEDGER_EVENT_TYPE_AUTHORIZATION_DEBITED,
+		Payload: &ledgermodel.LedgerEvent_AuthorizationDebited{
+			AuthorizationDebited: event,
+		},
+	}
+
+	return sh.publishLedgerEvent(ctx, ledgerEvent)
+}
+
+// PublishAuthorizationDebitFailed publishes an AuthorizationDebitFailedEvent to event.ledger
+func (sh *StreamHandler) PublishAuthorizationDebitFailed(ctx context.Context, authorizationID, deviceID string, requestedMsat, remainingMsat int64, reason, timestamp string) error {
+	event := &ledgermodel.AuthorizationDebitFailedEvent{
+		AuthorizationId: authorizationID,
+		DeviceId:        deviceID,
+		RequestedMsat:   requestedMsat,
+		RemainingMsat:   remainingMsat,
+		Reason:          reason,
+		Timestamp:       timestamp,
+	}
+
+	ledgerEvent := &ledgermodel.LedgerEvent{
+		Type: ledgermodel.LedgerEventType_LEDGER_EVENT_TYPE_AUTHORIZATION_DEBIT_FAILED,
+		Payload: &ledgermodel.LedgerEvent_AuthorizationDebitFailed{
+			AuthorizationDebitFailed: event,
 		},
 	}
 

@@ -219,6 +219,17 @@ func (sc *StreamClient) handleLedgerMessage(ctx context.Context, mqttClient *MQT
 			return fmt.Errorf("ledger event missing AuthorizationExpired payload")
 		}
 		return sc.publishAuthorizationControl(ctx, mqttClient, payload.GetDeviceId(), payload.GetAuthorizationId(), "EXPIRED")
+	case ledgermodel.LedgerEventType_LEDGER_EVENT_TYPE_AUTHORIZATION_DEBIT_FAILED:
+		payload := ledgerEvent.GetAuthorizationDebitFailed()
+		if payload == nil {
+			return fmt.Errorf("ledger event missing AuthorizationDebitFailed payload")
+		}
+		log.Printf("[AUTHORIZATION_DEBIT_FAILED] Device: %s, Reason: %s, Requested: %d, Remaining: %d",
+			payload.GetDeviceId(),
+			payload.GetReason(),
+			payload.GetRequestedMsat(),
+			payload.GetRemainingMsat())
+		return sc.publishAuthorizationControl(ctx, mqttClient, payload.GetDeviceId(), payload.GetAuthorizationId(), "AUTHORIZE")
 	default:
 		return nil
 	}

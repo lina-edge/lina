@@ -385,25 +385,11 @@ func (sb *SouthboundInterface) handleControlMessage(client mqtt.Client, msg mqtt
 		// through the handleConfigMessage handler
 
 	case mqttmodel.ControlCommand_CONTROL_COMMAND_AUTHORIZATION:
-		authID := control.AuthorizationId
 		reason := control.Reason
 		if reason == "" {
 			reason = "AUTHORIZATION_REQUIRED"
 		}
-		msg := fmt.Sprintf("Command AUTHORIZATION received (reason %s)", reason)
-		if authID != "" {
-			msg += " (" + authID + ")"
-			// Mark the specified authorization as exhausted
-			b.mu.Lock()
-			for i := range b.state.Authorizations {
-				if b.state.Authorizations[i].AuthorizationID == authID {
-					b.state.Authorizations[i].Status = "EXHAUSTED"
-					b.state.Authorizations[i].RemainingMsat = 0
-				}
-			}
-			b.mu.Unlock()
-		}
-		b.addLog(msg, "info")
+		b.addLog(fmt.Sprintf("Command AUTHORIZATION received (reason: %s)", reason), "info")
 		// Request new authorization
 		sb.PublishAuthorizeRequest(reason)
 

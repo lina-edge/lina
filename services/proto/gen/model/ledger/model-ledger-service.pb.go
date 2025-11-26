@@ -78,12 +78,14 @@ func (AuthorizationStatus) EnumDescriptor() ([]byte, []int) {
 type LedgerEventType int32
 
 const (
-	LedgerEventType_LEDGER_EVENT_TYPE_UNSPECIFIED             LedgerEventType = 0
-	LedgerEventType_LEDGER_EVENT_TYPE_AUTHORIZATION_CREATED   LedgerEventType = 1
-	LedgerEventType_LEDGER_EVENT_TYPE_AUTHORIZATION_COMPLETED LedgerEventType = 2
-	LedgerEventType_LEDGER_EVENT_TYPE_AUTHORIZATION_EXPIRED   LedgerEventType = 3
-	LedgerEventType_LEDGER_EVENT_TYPE_DEVICE_CREDITED         LedgerEventType = 4
-	LedgerEventType_LEDGER_EVENT_TYPE_DEVICE_DEBITED          LedgerEventType = 5
+	LedgerEventType_LEDGER_EVENT_TYPE_UNSPECIFIED                LedgerEventType = 0
+	LedgerEventType_LEDGER_EVENT_TYPE_AUTHORIZATION_CREATED      LedgerEventType = 1
+	LedgerEventType_LEDGER_EVENT_TYPE_AUTHORIZATION_COMPLETED    LedgerEventType = 2
+	LedgerEventType_LEDGER_EVENT_TYPE_AUTHORIZATION_EXPIRED      LedgerEventType = 3
+	LedgerEventType_LEDGER_EVENT_TYPE_DEVICE_CREDITED            LedgerEventType = 4
+	LedgerEventType_LEDGER_EVENT_TYPE_DEVICE_DEBITED             LedgerEventType = 5
+	LedgerEventType_LEDGER_EVENT_TYPE_AUTHORIZATION_DEBITED      LedgerEventType = 6
+	LedgerEventType_LEDGER_EVENT_TYPE_AUTHORIZATION_DEBIT_FAILED LedgerEventType = 7
 )
 
 // Enum value maps for LedgerEventType.
@@ -95,14 +97,18 @@ var (
 		3: "LEDGER_EVENT_TYPE_AUTHORIZATION_EXPIRED",
 		4: "LEDGER_EVENT_TYPE_DEVICE_CREDITED",
 		5: "LEDGER_EVENT_TYPE_DEVICE_DEBITED",
+		6: "LEDGER_EVENT_TYPE_AUTHORIZATION_DEBITED",
+		7: "LEDGER_EVENT_TYPE_AUTHORIZATION_DEBIT_FAILED",
 	}
 	LedgerEventType_value = map[string]int32{
-		"LEDGER_EVENT_TYPE_UNSPECIFIED":             0,
-		"LEDGER_EVENT_TYPE_AUTHORIZATION_CREATED":   1,
-		"LEDGER_EVENT_TYPE_AUTHORIZATION_COMPLETED": 2,
-		"LEDGER_EVENT_TYPE_AUTHORIZATION_EXPIRED":   3,
-		"LEDGER_EVENT_TYPE_DEVICE_CREDITED":         4,
-		"LEDGER_EVENT_TYPE_DEVICE_DEBITED":          5,
+		"LEDGER_EVENT_TYPE_UNSPECIFIED":                0,
+		"LEDGER_EVENT_TYPE_AUTHORIZATION_CREATED":      1,
+		"LEDGER_EVENT_TYPE_AUTHORIZATION_COMPLETED":    2,
+		"LEDGER_EVENT_TYPE_AUTHORIZATION_EXPIRED":      3,
+		"LEDGER_EVENT_TYPE_DEVICE_CREDITED":            4,
+		"LEDGER_EVENT_TYPE_DEVICE_DEBITED":             5,
+		"LEDGER_EVENT_TYPE_AUTHORIZATION_DEBITED":      6,
+		"LEDGER_EVENT_TYPE_AUTHORIZATION_DEBIT_FAILED": 7,
 	}
 )
 
@@ -845,6 +851,166 @@ func (x *DeviceDebitedEvent) GetTimestamp() string {
 	return ""
 }
 
+type AuthorizationDebitedEvent struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	AuthorizationId string                 `protobuf:"bytes,1,opt,name=authorization_id,json=authorizationId,proto3" json:"authorization_id,omitempty"`
+	DeviceId        string                 `protobuf:"bytes,2,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
+	AmountMsat      int64                  `protobuf:"varint,3,opt,name=amount_msat,json=amountMsat,proto3" json:"amount_msat,omitempty"`
+	RemainingMsat   int64                  `protobuf:"varint,4,opt,name=remaining_msat,json=remainingMsat,proto3" json:"remaining_msat,omitempty"`
+	Timestamp       string                 `protobuf:"bytes,5,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *AuthorizationDebitedEvent) Reset() {
+	*x = AuthorizationDebitedEvent{}
+	mi := &file_model_model_ledger_service_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AuthorizationDebitedEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AuthorizationDebitedEvent) ProtoMessage() {}
+
+func (x *AuthorizationDebitedEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_model_model_ledger_service_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AuthorizationDebitedEvent.ProtoReflect.Descriptor instead.
+func (*AuthorizationDebitedEvent) Descriptor() ([]byte, []int) {
+	return file_model_model_ledger_service_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *AuthorizationDebitedEvent) GetAuthorizationId() string {
+	if x != nil {
+		return x.AuthorizationId
+	}
+	return ""
+}
+
+func (x *AuthorizationDebitedEvent) GetDeviceId() string {
+	if x != nil {
+		return x.DeviceId
+	}
+	return ""
+}
+
+func (x *AuthorizationDebitedEvent) GetAmountMsat() int64 {
+	if x != nil {
+		return x.AmountMsat
+	}
+	return 0
+}
+
+func (x *AuthorizationDebitedEvent) GetRemainingMsat() int64 {
+	if x != nil {
+		return x.RemainingMsat
+	}
+	return 0
+}
+
+func (x *AuthorizationDebitedEvent) GetTimestamp() string {
+	if x != nil {
+		return x.Timestamp
+	}
+	return ""
+}
+
+type AuthorizationDebitFailedEvent struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	AuthorizationId string                 `protobuf:"bytes,1,opt,name=authorization_id,json=authorizationId,proto3" json:"authorization_id,omitempty"`
+	DeviceId        string                 `protobuf:"bytes,2,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
+	RequestedMsat   int64                  `protobuf:"varint,3,opt,name=requested_msat,json=requestedMsat,proto3" json:"requested_msat,omitempty"`
+	RemainingMsat   int64                  `protobuf:"varint,4,opt,name=remaining_msat,json=remainingMsat,proto3" json:"remaining_msat,omitempty"`
+	Reason          string                 `protobuf:"bytes,5,opt,name=reason,proto3" json:"reason,omitempty"`
+	Timestamp       string                 `protobuf:"bytes,6,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *AuthorizationDebitFailedEvent) Reset() {
+	*x = AuthorizationDebitFailedEvent{}
+	mi := &file_model_model_ledger_service_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AuthorizationDebitFailedEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AuthorizationDebitFailedEvent) ProtoMessage() {}
+
+func (x *AuthorizationDebitFailedEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_model_model_ledger_service_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AuthorizationDebitFailedEvent.ProtoReflect.Descriptor instead.
+func (*AuthorizationDebitFailedEvent) Descriptor() ([]byte, []int) {
+	return file_model_model_ledger_service_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *AuthorizationDebitFailedEvent) GetAuthorizationId() string {
+	if x != nil {
+		return x.AuthorizationId
+	}
+	return ""
+}
+
+func (x *AuthorizationDebitFailedEvent) GetDeviceId() string {
+	if x != nil {
+		return x.DeviceId
+	}
+	return ""
+}
+
+func (x *AuthorizationDebitFailedEvent) GetRequestedMsat() int64 {
+	if x != nil {
+		return x.RequestedMsat
+	}
+	return 0
+}
+
+func (x *AuthorizationDebitFailedEvent) GetRemainingMsat() int64 {
+	if x != nil {
+		return x.RemainingMsat
+	}
+	return 0
+}
+
+func (x *AuthorizationDebitFailedEvent) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *AuthorizationDebitFailedEvent) GetTimestamp() string {
+	if x != nil {
+		return x.Timestamp
+	}
+	return ""
+}
+
 type LedgerEvent struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Type  LedgerEventType        `protobuf:"varint,1,opt,name=type,proto3,enum=iot.payperuse.edge.model.ledger.LedgerEventType" json:"type,omitempty"`
@@ -855,6 +1021,8 @@ type LedgerEvent struct {
 	//	*LedgerEvent_AuthorizationExpired
 	//	*LedgerEvent_DeviceCredited
 	//	*LedgerEvent_DeviceDebited
+	//	*LedgerEvent_AuthorizationDebited
+	//	*LedgerEvent_AuthorizationDebitFailed
 	Payload       isLedgerEvent_Payload `protobuf_oneof:"payload"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -862,7 +1030,7 @@ type LedgerEvent struct {
 
 func (x *LedgerEvent) Reset() {
 	*x = LedgerEvent{}
-	mi := &file_model_model_ledger_service_proto_msgTypes[11]
+	mi := &file_model_model_ledger_service_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -874,7 +1042,7 @@ func (x *LedgerEvent) String() string {
 func (*LedgerEvent) ProtoMessage() {}
 
 func (x *LedgerEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_model_model_ledger_service_proto_msgTypes[11]
+	mi := &file_model_model_ledger_service_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -887,7 +1055,7 @@ func (x *LedgerEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LedgerEvent.ProtoReflect.Descriptor instead.
 func (*LedgerEvent) Descriptor() ([]byte, []int) {
-	return file_model_model_ledger_service_proto_rawDescGZIP(), []int{11}
+	return file_model_model_ledger_service_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *LedgerEvent) GetType() LedgerEventType {
@@ -949,6 +1117,24 @@ func (x *LedgerEvent) GetDeviceDebited() *DeviceDebitedEvent {
 	return nil
 }
 
+func (x *LedgerEvent) GetAuthorizationDebited() *AuthorizationDebitedEvent {
+	if x != nil {
+		if x, ok := x.Payload.(*LedgerEvent_AuthorizationDebited); ok {
+			return x.AuthorizationDebited
+		}
+	}
+	return nil
+}
+
+func (x *LedgerEvent) GetAuthorizationDebitFailed() *AuthorizationDebitFailedEvent {
+	if x != nil {
+		if x, ok := x.Payload.(*LedgerEvent_AuthorizationDebitFailed); ok {
+			return x.AuthorizationDebitFailed
+		}
+	}
+	return nil
+}
+
 type isLedgerEvent_Payload interface {
 	isLedgerEvent_Payload()
 }
@@ -973,6 +1159,14 @@ type LedgerEvent_DeviceDebited struct {
 	DeviceDebited *DeviceDebitedEvent `protobuf:"bytes,6,opt,name=device_debited,json=deviceDebited,proto3,oneof"`
 }
 
+type LedgerEvent_AuthorizationDebited struct {
+	AuthorizationDebited *AuthorizationDebitedEvent `protobuf:"bytes,7,opt,name=authorization_debited,json=authorizationDebited,proto3,oneof"`
+}
+
+type LedgerEvent_AuthorizationDebitFailed struct {
+	AuthorizationDebitFailed *AuthorizationDebitFailedEvent `protobuf:"bytes,8,opt,name=authorization_debit_failed,json=authorizationDebitFailed,proto3,oneof"`
+}
+
 func (*LedgerEvent_AuthorizationCreated) isLedgerEvent_Payload() {}
 
 func (*LedgerEvent_AuthorizationCompleted) isLedgerEvent_Payload() {}
@@ -982,6 +1176,10 @@ func (*LedgerEvent_AuthorizationExpired) isLedgerEvent_Payload() {}
 func (*LedgerEvent_DeviceCredited) isLedgerEvent_Payload() {}
 
 func (*LedgerEvent_DeviceDebited) isLedgerEvent_Payload() {}
+
+func (*LedgerEvent_AuthorizationDebited) isLedgerEvent_Payload() {}
+
+func (*LedgerEvent_AuthorizationDebitFailed) isLedgerEvent_Payload() {}
 
 var File_model_model_ledger_service_proto protoreflect.FileDescriptor
 
@@ -1043,27 +1241,45 @@ const file_model_model_ledger_service_proto_rawDesc = "" +
 	"\vamount_msat\x18\x03 \x01(\x03R\n" +
 	"amountMsat\x12(\n" +
 	"\x10new_balance_msat\x18\x04 \x01(\x03R\x0enewBalanceMsat\x12\x1c\n" +
-	"\ttimestamp\x18\x05 \x01(\tR\ttimestamp\"\xfc\x04\n" +
+	"\ttimestamp\x18\x05 \x01(\tR\ttimestamp\"\xc9\x01\n" +
+	"\x19AuthorizationDebitedEvent\x12)\n" +
+	"\x10authorization_id\x18\x01 \x01(\tR\x0fauthorizationId\x12\x1b\n" +
+	"\tdevice_id\x18\x02 \x01(\tR\bdeviceId\x12\x1f\n" +
+	"\vamount_msat\x18\x03 \x01(\x03R\n" +
+	"amountMsat\x12%\n" +
+	"\x0eremaining_msat\x18\x04 \x01(\x03R\rremainingMsat\x12\x1c\n" +
+	"\ttimestamp\x18\x05 \x01(\tR\ttimestamp\"\xeb\x01\n" +
+	"\x1dAuthorizationDebitFailedEvent\x12)\n" +
+	"\x10authorization_id\x18\x01 \x01(\tR\x0fauthorizationId\x12\x1b\n" +
+	"\tdevice_id\x18\x02 \x01(\tR\bdeviceId\x12%\n" +
+	"\x0erequested_msat\x18\x03 \x01(\x03R\rrequestedMsat\x12%\n" +
+	"\x0eremaining_msat\x18\x04 \x01(\x03R\rremainingMsat\x12\x16\n" +
+	"\x06reason\x18\x05 \x01(\tR\x06reason\x12\x1c\n" +
+	"\ttimestamp\x18\x06 \x01(\tR\ttimestamp\"\xef\x06\n" +
 	"\vLedgerEvent\x12D\n" +
 	"\x04type\x18\x01 \x01(\x0e20.iot.payperuse.edge.model.ledger.LedgerEventTypeR\x04type\x12q\n" +
 	"\x15authorization_created\x18\x02 \x01(\v2:.iot.payperuse.edge.model.ledger.AuthorizationCreatedEventH\x00R\x14authorizationCreated\x12w\n" +
 	"\x17authorization_completed\x18\x03 \x01(\v2<.iot.payperuse.edge.model.ledger.AuthorizationCompletedEventH\x00R\x16authorizationCompleted\x12q\n" +
 	"\x15authorization_expired\x18\x04 \x01(\v2:.iot.payperuse.edge.model.ledger.AuthorizationExpiredEventH\x00R\x14authorizationExpired\x12_\n" +
 	"\x0fdevice_credited\x18\x05 \x01(\v24.iot.payperuse.edge.model.ledger.DeviceCreditedEventH\x00R\x0edeviceCredited\x12\\\n" +
-	"\x0edevice_debited\x18\x06 \x01(\v23.iot.payperuse.edge.model.ledger.DeviceDebitedEventH\x00R\rdeviceDebitedB\t\n" +
+	"\x0edevice_debited\x18\x06 \x01(\v23.iot.payperuse.edge.model.ledger.DeviceDebitedEventH\x00R\rdeviceDebited\x12q\n" +
+	"\x15authorization_debited\x18\a \x01(\v2:.iot.payperuse.edge.model.ledger.AuthorizationDebitedEventH\x00R\x14authorizationDebited\x12~\n" +
+	"\x1aauthorization_debit_failed\x18\b \x01(\v2>.iot.payperuse.edge.model.ledger.AuthorizationDebitFailedEventH\x00R\x18authorizationDebitFailedB\t\n" +
 	"\apayload*\xa1\x01\n" +
 	"\x13AuthorizationStatus\x12$\n" +
 	" AUTHORIZATION_STATUS_UNSPECIFIED\x10\x00\x12 \n" +
 	"\x1cAUTHORIZATION_STATUS_GRANTED\x10\x01\x12\x1f\n" +
 	"\x1bAUTHORIZATION_STATUS_ACTIVE\x10\x02\x12!\n" +
-	"\x1dAUTHORIZATION_STATUS_REJECTED\x10\x03*\x8a\x02\n" +
+	"\x1dAUTHORIZATION_STATUS_REJECTED\x10\x03*\xe9\x02\n" +
 	"\x0fLedgerEventType\x12!\n" +
 	"\x1dLEDGER_EVENT_TYPE_UNSPECIFIED\x10\x00\x12+\n" +
 	"'LEDGER_EVENT_TYPE_AUTHORIZATION_CREATED\x10\x01\x12-\n" +
 	")LEDGER_EVENT_TYPE_AUTHORIZATION_COMPLETED\x10\x02\x12+\n" +
 	"'LEDGER_EVENT_TYPE_AUTHORIZATION_EXPIRED\x10\x03\x12%\n" +
 	"!LEDGER_EVENT_TYPE_DEVICE_CREDITED\x10\x04\x12$\n" +
-	" LEDGER_EVENT_TYPE_DEVICE_DEBITED\x10\x05B7Z5github.com/robertodantas/lnpay/proto/gen/model/ledgerb\x06proto3"
+	" LEDGER_EVENT_TYPE_DEVICE_DEBITED\x10\x05\x12+\n" +
+	"'LEDGER_EVENT_TYPE_AUTHORIZATION_DEBITED\x10\x06\x120\n" +
+	",LEDGER_EVENT_TYPE_AUTHORIZATION_DEBIT_FAILED\x10\aB7Z5github.com/robertodantas/lnpay/proto/gen/model/ledgerb\x06proto3"
 
 var (
 	file_model_model_ledger_service_proto_rawDescOnce sync.Once
@@ -1078,22 +1294,24 @@ func file_model_model_ledger_service_proto_rawDescGZIP() []byte {
 }
 
 var file_model_model_ledger_service_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_model_model_ledger_service_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_model_model_ledger_service_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_model_model_ledger_service_proto_goTypes = []any{
-	(AuthorizationStatus)(0),            // 0: iot.payperuse.edge.model.ledger.AuthorizationStatus
-	(LedgerEventType)(0),                // 1: iot.payperuse.edge.model.ledger.LedgerEventType
-	(*Authorization)(nil),               // 2: iot.payperuse.edge.model.ledger.Authorization
-	(*BalanceProjection)(nil),           // 3: iot.payperuse.edge.model.ledger.BalanceProjection
-	(*CreateAuthorizationRequest)(nil),  // 4: iot.payperuse.edge.model.ledger.CreateAuthorizationRequest
-	(*CreateAuthorizationResponse)(nil), // 5: iot.payperuse.edge.model.ledger.CreateAuthorizationResponse
-	(*GetBalanceRequest)(nil),           // 6: iot.payperuse.edge.model.ledger.GetBalanceRequest
-	(*GetBalanceResponse)(nil),          // 7: iot.payperuse.edge.model.ledger.GetBalanceResponse
-	(*AuthorizationCreatedEvent)(nil),   // 8: iot.payperuse.edge.model.ledger.AuthorizationCreatedEvent
-	(*AuthorizationCompletedEvent)(nil), // 9: iot.payperuse.edge.model.ledger.AuthorizationCompletedEvent
-	(*AuthorizationExpiredEvent)(nil),   // 10: iot.payperuse.edge.model.ledger.AuthorizationExpiredEvent
-	(*DeviceCreditedEvent)(nil),         // 11: iot.payperuse.edge.model.ledger.DeviceCreditedEvent
-	(*DeviceDebitedEvent)(nil),          // 12: iot.payperuse.edge.model.ledger.DeviceDebitedEvent
-	(*LedgerEvent)(nil),                 // 13: iot.payperuse.edge.model.ledger.LedgerEvent
+	(AuthorizationStatus)(0),              // 0: iot.payperuse.edge.model.ledger.AuthorizationStatus
+	(LedgerEventType)(0),                  // 1: iot.payperuse.edge.model.ledger.LedgerEventType
+	(*Authorization)(nil),                 // 2: iot.payperuse.edge.model.ledger.Authorization
+	(*BalanceProjection)(nil),             // 3: iot.payperuse.edge.model.ledger.BalanceProjection
+	(*CreateAuthorizationRequest)(nil),    // 4: iot.payperuse.edge.model.ledger.CreateAuthorizationRequest
+	(*CreateAuthorizationResponse)(nil),   // 5: iot.payperuse.edge.model.ledger.CreateAuthorizationResponse
+	(*GetBalanceRequest)(nil),             // 6: iot.payperuse.edge.model.ledger.GetBalanceRequest
+	(*GetBalanceResponse)(nil),            // 7: iot.payperuse.edge.model.ledger.GetBalanceResponse
+	(*AuthorizationCreatedEvent)(nil),     // 8: iot.payperuse.edge.model.ledger.AuthorizationCreatedEvent
+	(*AuthorizationCompletedEvent)(nil),   // 9: iot.payperuse.edge.model.ledger.AuthorizationCompletedEvent
+	(*AuthorizationExpiredEvent)(nil),     // 10: iot.payperuse.edge.model.ledger.AuthorizationExpiredEvent
+	(*DeviceCreditedEvent)(nil),           // 11: iot.payperuse.edge.model.ledger.DeviceCreditedEvent
+	(*DeviceDebitedEvent)(nil),            // 12: iot.payperuse.edge.model.ledger.DeviceDebitedEvent
+	(*AuthorizationDebitedEvent)(nil),     // 13: iot.payperuse.edge.model.ledger.AuthorizationDebitedEvent
+	(*AuthorizationDebitFailedEvent)(nil), // 14: iot.payperuse.edge.model.ledger.AuthorizationDebitFailedEvent
+	(*LedgerEvent)(nil),                   // 15: iot.payperuse.edge.model.ledger.LedgerEvent
 }
 var file_model_model_ledger_service_proto_depIdxs = []int32{
 	0,  // 0: iot.payperuse.edge.model.ledger.CreateAuthorizationResponse.status:type_name -> iot.payperuse.edge.model.ledger.AuthorizationStatus
@@ -1106,11 +1324,13 @@ var file_model_model_ledger_service_proto_depIdxs = []int32{
 	10, // 7: iot.payperuse.edge.model.ledger.LedgerEvent.authorization_expired:type_name -> iot.payperuse.edge.model.ledger.AuthorizationExpiredEvent
 	11, // 8: iot.payperuse.edge.model.ledger.LedgerEvent.device_credited:type_name -> iot.payperuse.edge.model.ledger.DeviceCreditedEvent
 	12, // 9: iot.payperuse.edge.model.ledger.LedgerEvent.device_debited:type_name -> iot.payperuse.edge.model.ledger.DeviceDebitedEvent
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	13, // 10: iot.payperuse.edge.model.ledger.LedgerEvent.authorization_debited:type_name -> iot.payperuse.edge.model.ledger.AuthorizationDebitedEvent
+	14, // 11: iot.payperuse.edge.model.ledger.LedgerEvent.authorization_debit_failed:type_name -> iot.payperuse.edge.model.ledger.AuthorizationDebitFailedEvent
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_model_model_ledger_service_proto_init() }
@@ -1118,12 +1338,14 @@ func file_model_model_ledger_service_proto_init() {
 	if File_model_model_ledger_service_proto != nil {
 		return
 	}
-	file_model_model_ledger_service_proto_msgTypes[11].OneofWrappers = []any{
+	file_model_model_ledger_service_proto_msgTypes[13].OneofWrappers = []any{
 		(*LedgerEvent_AuthorizationCreated)(nil),
 		(*LedgerEvent_AuthorizationCompleted)(nil),
 		(*LedgerEvent_AuthorizationExpired)(nil),
 		(*LedgerEvent_DeviceCredited)(nil),
 		(*LedgerEvent_DeviceDebited)(nil),
+		(*LedgerEvent_AuthorizationDebited)(nil),
+		(*LedgerEvent_AuthorizationDebitFailed)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -1131,7 +1353,7 @@ func file_model_model_ledger_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_model_model_ledger_service_proto_rawDesc), len(file_model_model_ledger_service_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   12,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

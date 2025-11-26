@@ -90,6 +90,23 @@ message DeviceDebitedEvent {
   string timestamp        = 5;
 }
 
+message AuthorizationDebitedEvent {
+  string authorization_id = 1;
+  string device_id        = 2;
+  int64  amount_msat      = 3;
+  int64  remaining_msat   = 4;
+  string timestamp        = 5;
+}
+
+message AuthorizationDebitFailedEvent {
+  string authorization_id = 1;
+  string device_id        = 2;
+  int64  requested_msat   = 3;
+  int64  remaining_msat   = 4;
+  string reason           = 5;
+  string timestamp        = 6;
+}
+
 // Envelope for entries in the event.ledger stream.
 enum LedgerEventType {
   LEDGER_EVENT_TYPE_UNSPECIFIED          = 0;
@@ -98,6 +115,8 @@ enum LedgerEventType {
   LEDGER_EVENT_TYPE_AUTHORIZATION_EXPIRED   = 3;
   LEDGER_EVENT_TYPE_DEVICE_CREDITED         = 4;
   LEDGER_EVENT_TYPE_DEVICE_DEBITED          = 5;
+  LEDGER_EVENT_TYPE_AUTHORIZATION_DEBITED   = 6;
+  LEDGER_EVENT_TYPE_AUTHORIZATION_DEBIT_FAILED = 7;
 }
 
 message LedgerEvent {
@@ -109,5 +128,7 @@ message LedgerEvent {
     AuthorizationExpiredEvent   authorization_expired   = 4;
     DeviceCreditedEvent         device_credited         = 5;
     DeviceDebitedEvent          device_debited          = 6;
+    AuthorizationDebitedEvent   authorization_debited   = 7;
+    AuthorizationDebitFailedEvent authorization_debit_failed = 8;
   }
 }
