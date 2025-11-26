@@ -986,15 +986,21 @@ func (b *SmartMeterBackend) publishAuthorizeRequest(reason string) {
 
 	payload, err := protoMarshalOpts.Marshal(&request)
 	if err != nil {
-		b.addLog("Failed to marshal authorize request: "+err.Error(), "error")
+		b.addLog("Failed to marshal authorize request ("+request.RequestId+"): "+err.Error(), "error")
 		return
 	}
 	topic := "/devices/" + b.state.DeviceID + "/request/authorize"
 
 	if token := b.mqttClient.Publish(topic, 1, false, payload); token.Wait() && token.Error() != nil {
-		b.addLog("Failed to publish authorize request: "+token.Error().Error(), "error")
+		b.addLog("Failed to publish authorize request ("+request.RequestId+"): "+token.Error().Error(), "error")
 	} else {
-		b.addLog("Authorization requested: "+request.RequestId, "info")
+		msg := fmt.Sprintf(
+			"Authorization requested (%s): %s msat for %s",
+			request.RequestId,
+			formatMsat(request.RequestMsat),
+			reason,
+		)
+		b.addLog(msg, "info")
 	}
 }
 
@@ -1017,13 +1023,21 @@ func (b *SmartMeterBackend) publishUsageReport(reportID string, kWhConsumed floa
 
 	payload, err := protoMarshalOpts.Marshal(&report)
 	if err != nil {
-		log.Printf("Failed to marshal usage report: %v", err)
+		b.addLog("Failed to marshal usage report ("+reportID+"): "+err.Error(), "error")
 		return
 	}
 	topic := "/devices/" + b.state.DeviceID + "/usage"
 
 	if token := b.mqttClient.Publish(topic, 1, false, payload); token.Wait() && token.Error() != nil {
-		log.Printf("Failed to publish usage report: %v", token.Error())
+		b.addLog("Failed to publish usage report ("+reportID+"): "+token.Error().Error(), "error")
+	} else {
+		msg := fmt.Sprintf(
+			"Usage report sent (%s): %.4f %s",
+			reportID,
+			kWhConsumed,
+			report.Unit,
+		)
+		b.addLog(msg, "info")
 	}
 }
 
@@ -1042,12 +1056,20 @@ func (b *SmartMeterBackend) publishInvoiceRequest(requestID string, amountMsat i
 
 	payload, err := protoMarshalOpts.Marshal(&request)
 	if err != nil {
-		b.addLog("Failed to marshal invoice request: "+err.Error(), "error")
+		b.addLog("Failed to marshal invoice request ("+requestID+"): "+err.Error(), "error")
 		return
 	}
 	topic := "/devices/" + b.state.DeviceID + "/request/invoice"
 
 	if token := b.mqttClient.Publish(topic, 1, false, payload); token.Wait() && token.Error() != nil {
-		b.addLog("Failed to publish invoice request: "+token.Error().Error(), "error")
+		b.addLog("Failed to publish invoice request ("+requestID+"): "+token.Error().Error(), "error")
+	} else {
+		msg := fmt.Sprintf(
+			"Invoice request sent (%s): %s msat for %s",
+			requestID,
+			formatMsat(amountMsat),
+			reason,
+		)
+		b.addLog(msg, "info")
 	}
 }
