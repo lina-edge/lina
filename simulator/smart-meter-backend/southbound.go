@@ -252,8 +252,106 @@ func (sb *SouthboundInterface) handleInvoiceResponse(client mqtt.Client, msg mqt
 }
 
 func (sb *SouthboundInterface) handleControlMessage(client mqtt.Client, msg mqtt.Message) {
-	// Handle control commands from backend if needed
-	log.Printf("Control message received: %s", string(msg.Payload()))
+	b := sb.backend
+
+	var control mqttmodel.ControlPayload
+	if err := protoUnmarshalOpts.Unmarshal(msg.Payload(), &control); err != nil {
+		b.addLog("Failed to parse control message: "+err.Error(), "error")
+		return
+	}
+
+	switch control.Command {
+	case mqttmodel.ControlCommand_CONTROL_COMMAND_STOP:
+		reason := control.Reason
+		if reason == "" {
+			reason = "REMOTE_COMMAND"
+		}
+		b.addLog("STOP command received: "+reason, "info")
+		b.stopMeter()
+
+	case mqttmodel.ControlCommand_CONTROL_COMMAND_PAUSE:
+		reason := control.Reason
+		if reason == "" {
+			reason = "REMOTE_COMMAND"
+		}
+		b.addLog("PAUSE command received: "+reason, "info")
+		b.mu.Lock()
+		if b.state.DeviceStatus == "ONLINE" {
+			b.state.DeviceStatus = "PAUSED"
+			// Turn off all appliances but keep connection
+			for i := range b.state.Appliances {
+				b.state.Appliances[i].IsOn = false
+				b.state.Appliances[i].CurrentWatts = 0
+			}
+			b.state.InstantPower = 0
+		}
+		b.mu.Unlock()
+		// Send heartbeat as ONLINE since device is still connected, just paused
+		sb.PublishHeartbeat(mqttmodel.DeviceStatus_DEVICE_STATUS_ONLINE)
+		b.broadcastState()
+
+	case mqttmodel.ControlCommand_CONTROL_COMMAND_RESUME:
+		b.addLog("RESUME command received", "info")
+		b.mu.Lock()
+		if b.state.DeviceStatus == "PAUSED" || b.state.DeviceStatus == "OFFLINE" {
+			b.state.DeviceStatus = "ONLINE"
+		}
+		b.mu.Unlock()
+		sb.PublishHeartbeat(mqttmodel.DeviceStatus_DEVICE_STATUS_ONLINE)
+		b.broadcastState()
+
+	case mqttmodel.ControlCommand_CONTROL_COMMAND_REBOOT:
+		b.addLog("REBOOT command received - restarting device", "info")
+		go func() {
+			// Stop current operations
+			b.stopMeter()
+			// Wait a moment to simulate reboot
+			time.Sleep(2 * time.Second)
+			// Reconnect
+			sb.Connect()
+		}()
+
+	case mqttmodel.ControlCommand_CONTROL_COMMAND_PING:
+		pingID := control.Id
+		if pingID != "" {
+			b.addLog("PING command received ("+pingID+")", "info")
+		} else {
+			b.addLog("PING command received", "info")
+		}
+		sb.PublishHeartbeat(mqttmodel.DeviceStatus_DEVICE_STATUS_ONLINE)
+
+	case mqttmodel.ControlCommand_CONTROL_COMMAND_UPDATE_CONFIG:
+		b.addLog("UPDATE_CONFIG command received - configuration will be updated via retained message", "info")
+		// Configuration is automatically updated via the retained config topic subscription
+		// No additional action needed here - the device will receive the updated config
+		// through the handleConfigMessage handler
+
+	case mqttmodel.ControlCommand_CONTROL_COMMAND_AUTHORIZATION:
+		authID := control.AuthorizationId
+		reason := control.Reason
+		if reason == "" {
+			reason = "AUTHORIZATION_REQUIRED"
+		}
+		msg := fmt.Sprintf("AUTHORIZATION command received: %s", reason)
+		if authID != "" {
+			msg += " (auth_id: " + authID + ")"
+			// Mark the specified authorization as exhausted
+			b.mu.Lock()
+			for i := range b.state.Authorizations {
+				if b.state.Authorizations[i].AuthorizationID == authID {
+					b.state.Authorizations[i].Status = "EXHAUSTED"
+					b.state.Authorizations[i].RemainingMsat = 0
+				}
+			}
+			b.mu.Unlock()
+		}
+		b.addLog(msg, "info")
+		// Request new authorization
+		sb.PublishAuthorizeRequest(reason)
+
+	default:
+		b.addLog("Unknown control command received: "+control.Command.String(), "error")
+	}
 }
 
 // MQTT Publishers
