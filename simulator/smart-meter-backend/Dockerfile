@@ -13,7 +13,7 @@ WORKDIR /workspace/simulator/smart-meter-backend
 RUN go mod download
 
 # Copy source code
-COPY simulator/smart-meter-backend/main.go ./
+COPY simulator/smart-meter-backend/*.go ./
 
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o smart-meter-backend .
