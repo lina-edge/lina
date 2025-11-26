@@ -25,9 +25,11 @@ export default function SmartMeterPage() {
     requestTopUp,
     simulatePayment,
     clearInvoice,
+    backendStatus,
   } = useSmartMeter()
 
   const isOnline = deviceStatus === "ONLINE"
+  const isBackendConnected = backendStatus === "connected"
   const canToggleAppliances = isOnline && balance && balance.available_msat > 0
 
   return (
@@ -44,6 +46,7 @@ export default function SmartMeterPage() {
 
         {/* Main Control */}
         <MeterControl
+          deviceId={deviceId}
           deviceStatus={deviceStatus}
           mqttStatus={mqttStatus}
           onStart={startMeter}
@@ -51,38 +54,40 @@ export default function SmartMeterPage() {
           events={logs}
         />
 
-        {/* Main Grid */}
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Meter Display */}
-          <div className="lg:col-span-1">
-            <MainMeter instantPower={instantPower} totalConsumption={totalConsumption} isOnline={isOnline} />
-          </div>
+        {isBackendConnected ? (
+          /* Main Grid */
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Meter Display */}
+            <div className="lg:col-span-1">
+              <MainMeter instantPower={instantPower} totalConsumption={totalConsumption} isOnline={isOnline} />
+            </div>
 
-          {/* Balance & Payment */}
-          <div className="lg:col-span-1">
-            <BalancePanel balance={balance} onRequestTopUp={requestTopUp} isOnline={isOnline} />
-            {invoice && (
-              <div className="mt-4">
-                <QRPayment invoice={invoice} onSimulatePayment={simulatePayment} onClose={clearInvoice} />
+            {/* Balance & Payment */}
+            <div className="lg:col-span-1">
+              <BalancePanel balance={balance} onRequestTopUp={requestTopUp} isOnline={isOnline} />
+              {invoice && (
+                <div className="mt-4">
+                  <QRPayment invoice={invoice} onSimulatePayment={simulatePayment} onClose={clearInvoice} />
+                </div>
+              )}
+            </div>
+
+            {/* Appliances */}
+            <div className="lg:col-span-1">
+              <h2 className="mb-4 text-sm font-medium text-muted-foreground">Appliances</h2>
+              <div className="grid gap-3">
+                {appliances.map((appliance) => (
+                  <ApplianceCard
+                    key={appliance.id}
+                    appliance={appliance}
+                    onToggle={() => toggleAppliance(appliance.id)}
+                    disabled={!canToggleAppliances && !appliance.isOn}
+                  />
+                ))}
               </div>
-            )}
-          </div>
-
-          {/* Appliances */}
-          <div className="lg:col-span-1">
-            <h2 className="mb-4 text-sm font-medium text-muted-foreground">Appliances</h2>
-            <div className="grid gap-3">
-              {appliances.map((appliance) => (
-                <ApplianceCard
-                  key={appliance.id}
-                  appliance={appliance}
-                  onToggle={() => toggleAppliance(appliance.id)}
-                  disabled={!canToggleAppliances && !appliance.isOn}
-                />
-              ))}
             </div>
           </div>
-        </div>
+        ) : null}
       </div>
     </main>
   )

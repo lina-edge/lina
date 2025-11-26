@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 import { useMemo } from "react"
 
 interface MeterControlProps {
+  deviceId: string
   deviceStatus: DeviceStatus
   mqttStatus: MQTTConnectionStatus
   onStart: () => void
@@ -24,7 +25,7 @@ const statusColors: Record<DeviceStatus, string> = {
   ERROR: "bg-destructive/20 text-destructive",
 }
 
-export function MeterControl({ deviceStatus, mqttStatus, onStart, onStop, events = [] }: MeterControlProps) {
+export function MeterControl({ deviceId, deviceStatus, mqttStatus, onStart, onStop, events = [] }: MeterControlProps) {
   const isOnline = deviceStatus === "ONLINE"
   const isStarting = deviceStatus === "STARTING"
 
@@ -68,7 +69,7 @@ export function MeterControl({ deviceStatus, mqttStatus, onStart, onStop, events
 
           <div className="text-right">
             <p className="text-xs text-muted-foreground">Device ID</p>
-            <p className="font-mono text-sm text-foreground">meter-001</p>
+            <p className="font-mono text-sm text-foreground">{deviceId || "unknown"}</p>
           </div>
         </div>
 

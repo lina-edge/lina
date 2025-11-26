@@ -3,7 +3,7 @@
 import { useBackend } from "./use-backend"
 
 export function useSmartMeter() {
-  const { state, sendCommand } = useBackend()
+  const { state, connectionStatus, sendCommand } = useBackend()
 
   const startMeter = () => sendCommand("start")
   const stopMeter = () => sendCommand("stop")
@@ -22,6 +22,7 @@ export function useSmartMeter() {
     invoice: state?.invoice || null,
     logs: state?.logs || [],
     mqttStatus: state?.mqttStatus || "disconnected",
+    backendStatus: connectionStatus,
     startMeter,
     stopMeter,
     toggleAppliance,
