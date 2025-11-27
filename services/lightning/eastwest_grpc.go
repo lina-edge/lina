@@ -39,9 +39,12 @@ func (s *EastWestServer) CreateInvoice(ctx context.Context, req *lightningmodel.
 		return nil, status.Error(codes.InvalidArgument, "amount_msat must be greater than 0")
 	}
 
+	log.Printf("CreateInvoice request received: device_id=%s amount_msat=%d reason=%s", req.DeviceId, req.AmountMsat, req.Reason)
+
 	memo := encodeInvoiceMetadata(req.DeviceId, req.Reason)
 	invoiceResp, err := s.lndClient.CreateInvoice(ctx, req.AmountMsat, memo, defaultInvoiceExpirySeconds)
 	if err != nil {
+		log.Printf("CreateInvoice failed for device_id=%s: %v", req.DeviceId, err)
 		return nil, status.Errorf(codes.Internal, "failed to create invoice: %v", err)
 	}
 
@@ -62,6 +65,8 @@ func (s *EastWestServer) CreateInvoice(ctx context.Context, req *lightningmodel.
 			log.Printf("failed to publish invoice created event: %v", err)
 		}
 	}
+
+	log.Printf("Invoice created successfully: invoice_id=%s device_id=%s amount_msat=%d expires_at=%s", invoiceID, req.DeviceId, req.AmountMsat, expiresAt)
 
 	return &lightningmodel.CreateInvoiceResponse{
 		Invoice: invoice,

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"time"
 
@@ -46,6 +47,7 @@ func (nb *NorthboundInterface) registerRoutes() {
 }
 
 func (nb *NorthboundInterface) health(c *gin.Context) {
+	log.Printf("Health check requested from %s", c.ClientIP())
 	c.JSON(http.StatusOK, gin.H{
 		"status": "ok",
 		"time":   time.Now().UTC().Format(time.RFC3339),
@@ -53,33 +55,42 @@ func (nb *NorthboundInterface) health(c *gin.Context) {
 }
 
 func (nb *NorthboundInterface) getInfo(c *gin.Context) {
+	start := time.Now()
+	log.Printf("Northbound getInfo request from %s", c.ClientIP())
 	ctx, cancel := context.WithTimeout(c.Request.Context(), northboundRequestTimeout)
 	defer cancel()
 
 	info, err := nb.lndClient.GetInfo(ctx)
 	if err != nil {
+		log.Printf("Northbound getInfo failed: %v", err)
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
 	}
 
+	log.Printf("Northbound getInfo succeeded in %s (alias=%s block_height=%d)", time.Since(start), info.Alias, info.BlockHeight)
 	c.JSON(http.StatusOK, info)
 }
 
 func (nb *NorthboundInterface) getWallet(c *gin.Context) {
+	start := time.Now()
+	log.Printf("Northbound getWallet request from %s", c.ClientIP())
 	ctx, cancel := context.WithTimeout(c.Request.Context(), northboundRequestTimeout)
 	defer cancel()
 
 	bal, err := nb.lndClient.GetWalletBalance(ctx)
 	if err != nil {
+		log.Printf("Northbound getWallet failed: %v", err)
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
 	}
 
+	log.Printf("Northbound getWallet succeeded in %s (confirmed_sat=%d)", time.Since(start), bal.ConfirmedBalance)
 	c.JSON(http.StatusOK, bal)
 }
 
 // Start boots the HTTP server.
 func (nb *NorthboundInterface) Start(addr string) error {
+	log.Printf("Starting northbound HTTP server on %s", addr)
 	nb.server = &http.Server{
 		Addr:    addr,
 		Handler: nb.router,
@@ -90,6 +101,7 @@ func (nb *NorthboundInterface) Start(addr string) error {
 
 // Stop gracefully stops the HTTP server.
 func (nb *NorthboundInterface) Stop(ctx context.Context) error {
+	log.Println("Stopping northbound HTTP server")
 	if nb.server == nil {
 		return nil
 	}

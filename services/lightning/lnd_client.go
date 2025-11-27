@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/lightningnetwork/lnd/lnrpc"
@@ -50,6 +51,7 @@ func NewLNDClient(cfg Config) (*LNDClient, error) {
 	mac := &macaroonCredential{macaroon: macaroonBytes}
 
 	// Dial LND
+	log.Printf("Dialing LND host %s", cfg.LNDHost)
 	conn, err := grpc.Dial(
 		cfg.LNDHost,
 		grpc.WithTransportCredentials(creds),
@@ -58,8 +60,10 @@ func NewLNDClient(cfg Config) (*LNDClient, error) {
 		grpc.WithTimeout(10*time.Second),
 	)
 	if err != nil {
+		log.Printf("Failed to dial LND host %s: %v", cfg.LNDHost, err)
 		return nil, fmt.Errorf("failed to dial LND: %w", err)
 	}
+	log.Printf("Successfully connected to LND host %s", cfg.LNDHost)
 
 	// Create clients
 	client := lnrpc.NewLightningClient(conn)
@@ -108,6 +112,7 @@ func (c *LNDClient) CreateInvoice(ctx context.Context, amountMsat int64, memo st
 		return nil, fmt.Errorf("amount must be positive")
 	}
 
+	log.Printf("Creating invoice via LND: amount_msat=%d expiry=%ds memo_len=%d", amountMsat, expirySeconds, len(memo))
 	invoice := &lnrpc.Invoice{
 		Memo:      memo,
 		ValueMsat: amountMsat,
@@ -126,6 +131,7 @@ func (c *LNDClient) LookupInvoice(ctx context.Context, paymentHash []byte) (*lnr
 
 // SubscribeInvoices creates a subscription stream for invoice updates
 func (c *LNDClient) SubscribeInvoices(ctx context.Context, addIndex, settleIndex uint64) (lnrpc.Lightning_SubscribeInvoicesClient, error) {
+	log.Printf("Subscribing to LND invoices stream (add_index=%d settle_index=%d)", addIndex, settleIndex)
 	return c.client.SubscribeInvoices(ctx, &lnrpc.InvoiceSubscription{
 		AddIndex:    addIndex,
 		SettleIndex: settleIndex,
@@ -135,6 +141,7 @@ func (c *LNDClient) SubscribeInvoices(ctx context.Context, addIndex, settleIndex
 // Close closes the connection
 func (c *LNDClient) Close() error {
 	if c.conn != nil {
+		log.Println("Closing LND gRPC connection")
 		return c.conn.Close()
 	}
 	return nil

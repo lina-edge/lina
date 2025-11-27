@@ -105,6 +105,8 @@ services:
         condition: service_healthy
       ledger:
         condition: service_started
+      lightning:
+        condition: service_started
 
   ledger:
     build:

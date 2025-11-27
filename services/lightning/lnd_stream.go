@@ -108,6 +108,8 @@ func (es *LNDEventStream) buildEventFromInvoice(invoice *lnrpc.Invoice) *lightni
 	}
 
 	expiresAt := time.Unix(invoice.CreationDate+invoice.Expiry, 0).UTC().Format(time.RFC3339)
+	stateName := invoice.State.String()
+	log.Printf("Processing invoice update: invoice_id=%s state=%s device_id=%s amount_msat=%d", invoiceID, stateName, deviceMeta.DeviceID, amountMsat)
 
 	switch invoice.State {
 	case lnrpc.Invoice_OPEN, lnrpc.Invoice_ACCEPTED:
@@ -129,6 +131,7 @@ func (es *LNDEventStream) buildEventFromInvoice(invoice *lnrpc.Invoice) *lightni
 		}
 	case lnrpc.Invoice_SETTLED:
 		timestamp := time.Unix(invoice.SettleDate, 0).UTC().Format(time.RFC3339)
+		log.Printf("Invoice settled: invoice_id=%s amount_received_msat=%d device_id=%s", invoiceID, invoice.AmtPaidSat*1000, deviceMeta.DeviceID)
 		return &lightningmodel.LightningEvent{
 			Type: lightningmodel.LightningEventType_LIGHTNING_EVENT_TYPE_INVOICE_SETTLED,
 			Payload: &lightningmodel.LightningEvent_InvoiceSettled{
@@ -143,6 +146,7 @@ func (es *LNDEventStream) buildEventFromInvoice(invoice *lnrpc.Invoice) *lightni
 		}
 	case lnrpc.Invoice_CANCELED:
 		timestamp := time.Unix(invoice.CreationDate+invoice.Expiry, 0).UTC().Format(time.RFC3339)
+		log.Printf("Invoice expired/canceled: invoice_id=%s device_id=%s", invoiceID, deviceMeta.DeviceID)
 		return &lightningmodel.LightningEvent{
 			Type: lightningmodel.LightningEventType_LIGHTNING_EVENT_TYPE_INVOICE_EXPIRED,
 			Payload: &lightningmodel.LightningEvent_InvoiceExpired{
@@ -154,6 +158,7 @@ func (es *LNDEventStream) buildEventFromInvoice(invoice *lnrpc.Invoice) *lightni
 			},
 		}
 	default:
+		log.Printf("Ignoring invoice update with unsupported state: invoice_id=%s state=%s", invoiceID, stateName)
 		return nil
 	}
 }
