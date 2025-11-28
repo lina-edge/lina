@@ -10,6 +10,7 @@ import (
 	lightningpb "github.com/robertodantas/lnpay/proto/gen/interfaces/lightning"
 	ledgermodel "github.com/robertodantas/lnpay/proto/gen/model/ledger"
 	lightningmodel "github.com/robertodantas/lnpay/proto/gen/model/lightning"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
@@ -48,6 +49,7 @@ func NewLedgerClient(cfg Config) (*LedgerClient, error) {
 		addr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithKeepaliveParams(keepaliveParams),
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 		grpc.WithUnaryInterceptor(internalpkg.LoggingUnaryClientInterceptor("device-service")),
 	)
 	if err != nil {
@@ -115,6 +117,7 @@ func NewLightningClient(cfg Config) (*LightningClient, error) {
 		addr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithKeepaliveParams(keepaliveParams),
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 		grpc.WithUnaryInterceptor(internalpkg.LoggingUnaryClientInterceptor("device-service")),
 	)
 	if err != nil {

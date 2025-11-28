@@ -96,6 +96,12 @@ services:
       - LIGHTNING_GRPC_PORT=${LIGHTNING_GRPC_PORT:-9090}
       - LIGHTNING_RPC_TIMEOUT_SECONDS=${LIGHTNING_RPC_TIMEOUT_SECONDS:-30}
       - GIN_MODE=release
+      - OTEL_RESOURCE_ATTRIBUTES=${OTEL_RESOURCE_ATTRIBUTES:-service.name=device-service}
+      - OTEL_TRACES_EXPORTER=${OTEL_TRACES_EXPORTER:-otlp}
+      - OTEL_METRICS_EXPORTER=${OTEL_METRICS_EXPORTER:-otlp}
+      - OTEL_EXPORTER_OTLP_PROTOCOL=${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-jaeger:4317}
+      - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-device-service}
     volumes:
       - ./mosquitto/certs:/certs:ro
     depends_on:
@@ -213,3 +219,11 @@ services:
         condition: service_healthy        
     restart: unless-stopped
 
+  jaeger:
+    image: jaegertracing/jaeger:2.12.0
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"  # UI
+      - "4317:4317"    # OTLP gRPC receiver
+      - "4318:4318"    # OTLP HTTP receiver

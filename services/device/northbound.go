@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	mqttpb "github.com/robertodantas/lnpay/proto/gen/model/mqtt"
 )
 
@@ -37,6 +38,10 @@ type NorthboundInterface struct {
 // NewNorthboundInterface creates a new northbound interface
 func NewNorthboundInterface(repo *DeviceRepository, dynSec *DynSecService, mqttClient *MQTTClient) *NorthboundInterface {
 	router := gin.Default()
+
+	// Add OpenTelemetry middleware for automatic route-based span naming
+	// This will create spans named like "GET /api/v1/devices" or "POST /api/v1/devices/:id"
+	router.Use(otelgin.Middleware("device-service"))
 
 	nb := &NorthboundInterface{
 		router:     router,
@@ -198,6 +203,9 @@ func (nb *NorthboundInterface) getDevice(c *gin.Context) {
 
 // Start starts the HTTP server
 func (nb *NorthboundInterface) Start(addr string) error {
+	// OpenTelemetry middleware is already added in NewNorthboundInterface
+	// It will automatically name spans as "{HTTP_METHOD} {route_template}"
+	// e.g., "GET /api/v1/devices", "POST /api/v1/devices", "GET /api/v1/devices/:id"
 	nb.server = &http.Server{
 		Addr:    addr,
 		Handler: nb.router,

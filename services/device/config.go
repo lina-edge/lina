@@ -41,6 +41,10 @@ type Config struct {
 
 	// Lightning request timeout (seconds)
 	LightningRPCTimeoutSeconds int
+
+	// OpenTelemetry / Jaeger
+	OTELExporterOTLPEndpoint string
+	OTELServiceName          string
 }
 
 func LoadConfig() Config {
@@ -81,5 +85,9 @@ func LoadConfig() Config {
 
 		// Lightning RPC timeout
 		LightningRPCTimeoutSeconds: internal.IntEnv("LIGHTNING_RPC_TIMEOUT_SECONDS", 30),
+
+		// OpenTelemetry / Jaeger
+		OTELExporterOTLPEndpoint: internal.GetEnv("OTEL_EXPORTER_OTLP_ENDPOINT", "jaeger:4317"),
+		OTELServiceName:          internal.GetEnv("OTEL_SERVICE_NAME", "device-service"),
 	}
 }
