@@ -113,54 +113,55 @@ func (nb *NorthboundInterface) createDevice(c *gin.Context) {
 	_, err = nb.repo.GetDevice(c, device.DeviceID)
 	deviceExists := err == nil
 
+	ctx := c.Request.Context()
 	if deviceExists {
 		// Update existing device in database
 		logger.WithDeviceID(device.DeviceID).
-			Info(c, "Device already exists, updating via northbound REST")
-		if err := nb.repo.UpdateDevice(c, device); err != nil {
+			Info(ctx, "Device already exists, updating via northbound REST")
+		if err := nb.repo.UpdateDevice(ctx, device); err != nil {
 			logger.WithDeviceID(device.DeviceID).
-				Error(c, "Failed to update device in database via northbound REST", err)
+				Error(ctx, "Failed to update device in database via northbound REST", err)
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "failed to update device",
 			})
 			return
 		}
 		logger.WithDeviceID(device.DeviceID).
-			Info(c, "Device updated in database via northbound REST")
+			Info(ctx, "Device updated in database via northbound REST")
 	} else {
 		// Create new device in database
-		if err := nb.repo.CreateDevice(c, device); err != nil {
+		if err := nb.repo.CreateDevice(ctx, device); err != nil {
 			logger.WithDeviceID(device.DeviceID).
-				Error(c, "Failed to create device in database via northbound REST", err)
+				Error(ctx, "Failed to create device in database via northbound REST", err)
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "failed to create device",
 			})
 			return
 		}
 		logger.WithDeviceID(device.DeviceID).
-			Info(c, "Device created in database via northbound REST")
+			Info(ctx, "Device created in database via northbound REST")
 	}
 
 	// Trigger dynsec provisioning (using device_secret as password)
 	logger.WithDeviceID(device.DeviceID).
-		Info(c, "Provisioning device in dynsec via northbound REST")
-	if err := nb.dynSec.ProvisionDevice(c, device.DeviceID, req.DeviceSecret); err != nil {
+		Info(ctx, "Provisioning device in dynsec via northbound REST")
+	if err := nb.dynSec.ProvisionDevice(ctx, device.DeviceID, req.DeviceSecret); err != nil {
 		logger.WithDeviceID(device.DeviceID).
-			Warnf(c, "Failed to provision device in dynsec via northbound REST: %v", err)
+			Warnf(ctx, "Failed to provision device in dynsec via northbound REST: %v", err)
 		// Continue even if provisioning fails - device is already in database
 	} else {
 		logger.WithDeviceID(device.DeviceID).
-			Info(c, "Device provisioned successfully in dynsec via northbound REST")
+			Info(ctx, "Device provisioned successfully in dynsec via northbound REST")
 	}
 
 	// Publish device configuration to /devices/{device_id}/config
-	if err := nb.publishDeviceConfig(c, device); err != nil {
+	if err := nb.publishDeviceConfig(ctx, device); err != nil {
 		logger.WithDeviceID(device.DeviceID).
-			Warnf(c, "Failed to publish device config on southbound mqtt via northbound REST: %v", err)
+			Warnf(ctx, "Failed to publish device config on southbound mqtt via northbound REST: %v", err)
 		// Continue even if publishing fails - device is already in database and provisioned
 	} else {
 		logger.WithDeviceID(device.DeviceID).
-			InfoWithFields(c, "Device config published on southbound mqtt via northbound REST", map[string]interface{}{
+			InfoWithFields(ctx, "Device config published on southbound mqtt via northbound REST", map[string]interface{}{
 				"topic": fmt.Sprintf("/devices/%s/config", device.DeviceID),
 			})
 	}
@@ -175,9 +176,10 @@ func (nb *NorthboundInterface) createDevice(c *gin.Context) {
 
 // listDevices handles GET /devices
 func (nb *NorthboundInterface) listDevices(c *gin.Context) {
-	devices, err := nb.repo.ListDevices(c)
+	ctx := c.Request.Context()
+	devices, err := nb.repo.ListDevices(ctx)
 	if err != nil {
-		logger.Error(c, "Failed to list devices via northbound REST", err)
+		logger.Error(ctx, "Failed to list devices via northbound REST", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "failed to list devices",
 		})
@@ -189,8 +191,9 @@ func (nb *NorthboundInterface) listDevices(c *gin.Context) {
 
 // getDevice handles GET /devices/:id
 func (nb *NorthboundInterface) getDevice(c *gin.Context) {
+	ctx := c.Request.Context()
 	deviceID := c.Param("id")
-	device, err := nb.repo.GetDevice(c, deviceID)
+	device, err := nb.repo.GetDevice(ctx, deviceID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": "device not found",

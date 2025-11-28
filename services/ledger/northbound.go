@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/robertodantas/lnpay/internal"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 // NorthboundInterface handles REST API endpoints
@@ -26,6 +27,8 @@ type NorthboundInterface struct {
 // NewNorthboundInterface creates a new northbound interface
 func NewNorthboundInterface(repo *LedgerRepository, cfg Config, streamHandler *StreamHandler) *NorthboundInterface {
 	router := gin.Default()
+
+	router.Use(otelgin.Middleware("ledger-service"))
 
 	nb := &NorthboundInterface{
 		router:        router,

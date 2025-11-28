@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 )
 
 const northboundRequestTimeout = 5 * time.Second
@@ -21,6 +22,9 @@ type NorthboundInterface struct {
 // NewNorthboundInterface wires the HTTP handlers.
 func NewNorthboundInterface(lndClient *LNDClient, cfg *Config) *NorthboundInterface {
 	router := gin.Default()
+
+	// Add OpenTelemetry middleware for automatic route-based span naming
+	router.Use(otelgin.Middleware("lightning-service"))
 
 	nb := &NorthboundInterface{
 		router:    router,
@@ -46,7 +50,8 @@ func (nb *NorthboundInterface) registerRoutes() {
 }
 
 func (nb *NorthboundInterface) health(c *gin.Context) {
-	logger.InfoWithFields(c, "Health check requested via northbound REST", map[string]interface{}{
+	ctx := c.Request.Context()
+	logger.InfoWithFields(ctx, "Health check requested via northbound REST", map[string]interface{}{
 		"client_ip": c.ClientIP(),
 	})
 	c.JSON(http.StatusOK, gin.H{
@@ -57,20 +62,21 @@ func (nb *NorthboundInterface) health(c *gin.Context) {
 
 func (nb *NorthboundInterface) getInfo(c *gin.Context) {
 	start := time.Now()
-	logger.InfoWithFields(c, "Northbound getInfo request via northbound REST", map[string]interface{}{
+	ctx := c.Request.Context()
+	logger.InfoWithFields(ctx, "Northbound getInfo request via northbound REST", map[string]interface{}{
 		"client_ip": c.ClientIP(),
 	})
-	ctx, cancel := context.WithTimeout(c, northboundRequestTimeout)
+	ctx, cancel := context.WithTimeout(ctx, northboundRequestTimeout)
 	defer cancel()
 
 	info, err := nb.lndClient.GetInfo(ctx)
 	if err != nil {
-		logger.Error(c, "Northbound getInfo failed via northbound REST", err)
+		logger.Error(ctx, "Northbound getInfo failed via northbound REST", err)
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
 	}
 
-	logger.InfoWithFields(c, "Northbound getInfo succeeded via northbound REST", map[string]interface{}{
+	logger.InfoWithFields(ctx, "Northbound getInfo succeeded via northbound REST", map[string]interface{}{
 		"duration":     time.Since(start).String(),
 		"alias":        info.Alias,
 		"block_height": info.BlockHeight,
@@ -80,20 +86,21 @@ func (nb *NorthboundInterface) getInfo(c *gin.Context) {
 
 func (nb *NorthboundInterface) getWallet(c *gin.Context) {
 	start := time.Now()
-	logger.InfoWithFields(c, "Northbound getWallet request via northbound REST", map[string]interface{}{
+	ctx := c.Request.Context()
+	logger.InfoWithFields(ctx, "Northbound getWallet request via northbound REST", map[string]interface{}{
 		"client_ip": c.ClientIP(),
 	})
-	ctx, cancel := context.WithTimeout(c, northboundRequestTimeout)
+	ctx, cancel := context.WithTimeout(ctx, northboundRequestTimeout)
 	defer cancel()
 
 	bal, err := nb.lndClient.GetWalletBalance(ctx)
 	if err != nil {
-		logger.Error(c, "Northbound getWallet failed via northbound REST", err)
+		logger.Error(ctx, "Northbound getWallet failed via northbound REST", err)
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
 	}
 
-	logger.InfoWithFields(c, "Northbound getWallet succeeded via northbound REST", map[string]interface{}{
+	logger.InfoWithFields(ctx, "Northbound getWallet succeeded via northbound REST", map[string]interface{}{
 		"duration":      time.Since(start).String(),
 		"confirmed_sat": bal.ConfirmedBalance,
 	})
