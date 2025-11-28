@@ -141,7 +141,6 @@ func (sc *StreamClient) StartLedgerBalanceSubscriber(ctx context.Context, mqttCl
 func (sc *StreamClient) consumeLedgerBalanceEvents(ctx context.Context, mqttClient *MQTTClient) {
 	streamName := "event.ledger"
 	lastID := "$"
-	opts := protojson.UnmarshalOptions{DiscardUnknown: true}
 
 	logger.WithStream(streamName, "consume").
 		Info(ctx, "Starting ledger balance subscriber")
@@ -176,7 +175,12 @@ func (sc *StreamClient) consumeLedgerBalanceEvents(ctx context.Context, mqttClie
 		for _, stream := range streams {
 			for _, msg := range stream.Messages {
 				lastID = msg.ID
-				if err := sc.handleLedgerMessage(ctx, mqttClient, msg, opts); err != nil {
+
+				// Wrap message handling with tracing (no ack needed for XRead)
+				if err := internal.TraceEventProcessing(ctx, streamName, msg, func(ctx context.Context, msg redis.XMessage) error {
+					opts := protojson.UnmarshalOptions{DiscardUnknown: true}
+					return sc.handleLedgerMessage(ctx, mqttClient, msg, opts)
+				}, nil); err != nil {
 					logger.WithStream(streamName, "consume").
 						Errorf(ctx, "Failed to handle ledger message %s: %v", msg.ID, err)
 				}
