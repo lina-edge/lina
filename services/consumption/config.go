@@ -11,6 +11,10 @@ type Config struct {
 	GRPCAddr      string
 	MaxPageSize   int
 	BusyTimeoutMS int
+
+	// OpenTelemetry / Jaeger
+	OTELExporterOTLPEndpoint string
+	OTELServiceName          string
 }
 
 func LoadConfig() Config {
@@ -21,6 +25,10 @@ func LoadConfig() Config {
 		GRPCAddr:      internal.GetEnv("GRPC_ADDR", ":9090"),
 		MaxPageSize:   internal.IntEnv("MAX_PAGE_SIZE", 200),
 		BusyTimeoutMS: internal.IntEnv("BUSY_TIMEOUT_MS", 5000),
+
+		// OpenTelemetry / Jaeger
+		OTELExporterOTLPEndpoint: internal.GetEnv("OTEL_EXPORTER_OTLP_ENDPOINT", "jaeger:4317"),
+		OTELServiceName:          internal.GetEnv("OTEL_SERVICE_NAME", "consumption-service"),
 	}
 }
 

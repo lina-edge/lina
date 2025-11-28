@@ -20,6 +20,24 @@ func main() {
 	// Load configuration
 	cfg := LoadConfig()
 
+	// Initialize OpenTelemetry
+	tracerShutdown, err := internal.InitTracer(internal.TracerConfig{
+		ServiceName:          cfg.OTELServiceName,
+		ExporterOTLPEndpoint: cfg.OTELExporterOTLPEndpoint,
+	})
+	if err != nil {
+		logger.Warnf("Failed to initialize OpenTelemetry: %v. Continuing without tracing.", err)
+	} else {
+		logger.Infof("OpenTelemetry initialized with OTLP exporter at %s", cfg.OTELExporterOTLPEndpoint)
+		defer func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := tracerShutdown(ctx); err != nil {
+				logger.Errorf("Error shutting down tracer: %v", err)
+			}
+		}()
+	}
+
 	// Connect to Redis stream
 	logger.Info("Connecting to Redis")
 	streamClient, err := internal.NewStreamClientFromEnv()

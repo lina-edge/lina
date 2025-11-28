@@ -10,17 +10,10 @@ import (
 	"syscall"
 	"time"
 
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
-	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/sdk/resource"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/robertodantas/lnpay/internal"
-	autosdk "go.opentelemetry.io/auto/sdk"
 
 	// Import the generated proto package
 	// Note: The path matches the go_package in the proto file + the gen/ output directory
@@ -106,77 +99,20 @@ func ExampleEmitUsageRecord() {
 	}
 }
 
-// initTracer initializes OpenTelemetry with OTLP exporter
-func initTracer(cfg Config) (func(context.Context) error, error) {
-	ctx := context.Background()
-
-	// Create OTLP exporter
-	exporter, err := otlptracegrpc.New(ctx,
-		otlptracegrpc.WithEndpoint(cfg.OTELExporterOTLPEndpoint),
-		otlptracegrpc.WithInsecure(), // Use insecure for local development
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create OTLP exporter: %w", err)
-	}
-
-	// Create resource with service name
-	res, err := resource.New(ctx,
-		resource.WithAttributes(
-			attribute.String("service.name", cfg.OTELServiceName),
-		),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create resource: %w", err)
-	}
-
-	// Create tracer provider with auto SDK and OTLP exporter
-	autoTp := autosdk.TracerProvider()
-
-	// Create a batch span processor with the OTLP exporter
-	bsp := sdktrace.NewBatchSpanProcessor(exporter)
-
-	// Create a new tracer provider that combines auto SDK with OTLP export
-	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithResource(res),
-		sdktrace.WithSpanProcessor(bsp),
-		// Use the auto SDK's sampler if available
-		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(1.0))),
-	)
-
-	// Set global tracer provider
-	otel.SetTracerProvider(tp)
-
-	// Set global propagator for trace context propagation
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
-		propagation.TraceContext{},
-		propagation.Baggage{},
-	))
-
-	// Shutdown function
-	shutdown := func(ctx context.Context) error {
-		// Shutdown the custom tracer provider
-		if err := tp.Shutdown(ctx); err != nil {
-			return fmt.Errorf("failed to shutdown tracer provider: %w", err)
-		}
-		// Note: auto SDK tracer provider shutdown is handled internally
-		_ = autoTp
-		return nil
-	}
-
-	logger.Infof("OpenTelemetry initialized with OTLP exporter at %s", cfg.OTELExporterOTLPEndpoint)
-	return shutdown, nil
-}
-
 func main() {
 	logger.Info("Starting device service")
 
 	cfg := LoadConfig()
 
 	// Initialize OpenTelemetry
-	tracerShutdown, err := initTracer(cfg)
+	tracerShutdown, err := internal.InitTracer(internal.TracerConfig{
+		ServiceName:          cfg.OTELServiceName,
+		ExporterOTLPEndpoint: cfg.OTELExporterOTLPEndpoint,
+	})
 	if err != nil {
 		logger.Warnf("Failed to initialize OpenTelemetry: %v. Continuing without tracing.", err)
 	} else {
+		logger.Infof("OpenTelemetry initialized with OTLP exporter at %s", cfg.OTELExporterOTLPEndpoint)
 		defer func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()

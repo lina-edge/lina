@@ -84,6 +84,24 @@ func main() {
 
 	cfg := LoadConfig()
 
+	// Initialize OpenTelemetry
+	tracerShutdown, err := internal.InitTracer(internal.TracerConfig{
+		ServiceName:          cfg.OTELServiceName,
+		ExporterOTLPEndpoint: cfg.OTELExporterOTLPEndpoint,
+	})
+	if err != nil {
+		logger.Warnf("Failed to initialize OpenTelemetry: %v. Continuing without tracing.", err)
+	} else {
+		logger.Infof("OpenTelemetry initialized with OTLP exporter at %s", cfg.OTELExporterOTLPEndpoint)
+		defer func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := tracerShutdown(ctx); err != nil {
+				logger.Errorf("Error shutting down tracer: %v", err)
+			}
+		}()
+	}
+
 	// Initialize repository (creates DB connection and tables)
 	repo, err := NewLedgerRepository(cfg.DBPath, cfg.BusyTimeoutMS)
 	if err != nil {

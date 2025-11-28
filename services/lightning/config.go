@@ -16,6 +16,10 @@ type Config struct {
 	ServiceToken   string
 	RedisAddr      string
 	RedisPassword  string
+
+	// OpenTelemetry / Jaeger
+	OTELExporterOTLPEndpoint string
+	OTELServiceName          string
 }
 
 func LoadConfig() *Config {
@@ -29,6 +33,10 @@ func LoadConfig() *Config {
 		ServiceToken:   internal.GetEnv("SERVICE_TOKEN", "dev-token"),
 		RedisAddr:      internal.GetEnv("REDIS_ADDR", "localhost:6379"),
 		RedisPassword:  internal.GetEnv("REDIS_PASSWORD", ""),
+
+		// OpenTelemetry / Jaeger
+		OTELExporterOTLPEndpoint: internal.GetEnv("OTEL_EXPORTER_OTLP_ENDPOINT", "jaeger:4317"),
+		OTELServiceName:          internal.GetEnv("OTEL_SERVICE_NAME", "lightning-service"),
 	}
 
 	// Validate configuration
