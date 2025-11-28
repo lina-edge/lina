@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -17,7 +18,11 @@ import (
 
 var (
 	mqttPublishTracer = otel.Tracer("mqtt.publish")
+	mqttReceiveTracer = otel.Tracer("mqtt.receive")
 )
+
+// MQTTMessageHandlerWithContext is a custom handler that receives context
+type MQTTMessageHandlerWithContext func(ctx context.Context, client mqtt.Client, msg mqtt.Message)
 
 // MQTTClient wraps the MQTT client and connection logic
 type MQTTClient struct {
@@ -279,8 +284,40 @@ func (m *MQTTClient) Publish(ctx context.Context, topic string, qos byte, retain
 	return nil
 }
 
-// Subscribe subscribes to a topic with a message handler
-func (m *MQTTClient) Subscribe(ctx context.Context, topic string, qos byte, handler mqtt.MessageHandler) error {
+// wrapHandlerWithTracing wraps a context-aware handler with OpenTelemetry tracing
+func wrapHandlerWithTracing(handler MQTTMessageHandlerWithContext) mqtt.MessageHandler {
+	return func(client mqtt.Client, msg mqtt.Message) {
+		topic := msg.Topic()
+		deviceID := extractDeviceIDFromTopic(topic)
+
+		ctx, span := mqttReceiveTracer.Start(context.Background(), fmt.Sprintf("[mqtt] %s received", topic),
+			trace.WithAttributes(
+				attribute.String("mqtt.topic", topic),
+				attribute.String("mqtt.device_id", deviceID),
+				attribute.Int("mqtt.payload.size", len(msg.Payload())),
+				attribute.String("mqtt.operation", "RECEIVE"),
+			),
+		)
+		defer span.End()
+
+		// Call the custom handler with context
+		handler(ctx, client, msg)
+
+		span.SetStatus(codes.Ok, "processed")
+	}
+}
+
+// extractDeviceIDFromTopic extracts device ID from MQTT topic
+func extractDeviceIDFromTopic(topic string) string {
+	parts := strings.Split(strings.TrimPrefix(topic, "/"), "/")
+	if len(parts) >= 2 && parts[0] == "devices" {
+		return parts[1]
+	}
+	return ""
+}
+
+// Subscribe subscribes to a topic with a context-aware message handler
+func (m *MQTTClient) Subscribe(ctx context.Context, topic string, qos byte, handler MQTTMessageHandlerWithContext) error {
 	spanName := fmt.Sprintf("[mqtt] %s subscribe", topic)
 	ctx, span := mqttPublishTracer.Start(ctx, spanName,
 		trace.WithAttributes(
@@ -291,7 +328,10 @@ func (m *MQTTClient) Subscribe(ctx context.Context, topic string, qos byte, hand
 	)
 	defer span.End()
 
-	token := m.client.Subscribe(topic, qos, handler)
+	// Wrap the context-aware handler with tracing
+	wrappedHandler := wrapHandlerWithTracing(handler)
+
+	token := m.client.Subscribe(topic, qos, wrappedHandler)
 	if token.Wait() && token.Error() != nil {
 		span.RecordError(token.Error())
 		span.SetStatus(codes.Error, token.Error().Error())

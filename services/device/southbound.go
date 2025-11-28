@@ -6,20 +6,12 @@ import (
 	"strings"
 	"time"
 
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/encoding/protojson"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	ledgermodel "github.com/robertodantas/lnpay/proto/gen/model/ledger"
 	lightningmodel "github.com/robertodantas/lnpay/proto/gen/model/lightning"
 	mqttpb "github.com/robertodantas/lnpay/proto/gen/model/mqtt"
-)
-
-var (
-	mqttTracer = otel.Tracer("mqtt.southbound")
 )
 
 // SouthboundInterface handles MQTT subscriptions for device messages
@@ -85,75 +77,37 @@ func extractDeviceID(topic string) string {
 }
 
 // handleHeartbeat processes heartbeat messages from devices
-func (sb *SouthboundInterface) handleHeartbeat(client mqtt.Client, msg mqtt.Message) {
+func (sb *SouthboundInterface) handleHeartbeat(ctx context.Context, client mqtt.Client, msg mqtt.Message) {
 	topic := msg.Topic()
 	deviceID := extractDeviceID(topic)
-
-	ctx, span := mqttTracer.Start(context.Background(), fmt.Sprintf("[mqtt] %s received", topic),
-		trace.WithAttributes(
-			attribute.String("mqtt.topic", topic),
-			attribute.String("mqtt.device_id", deviceID),
-			attribute.String("mqtt.message_type", "heartbeat"),
-			attribute.Int("mqtt.payload.size", len(msg.Payload())),
-		),
-	)
-	defer span.End()
 
 	var payload mqttpb.HeartbeatPayload
 	opts := protojson.UnmarshalOptions{DiscardUnknown: true}
 	if err := opts.Unmarshal(msg.Payload(), &payload); err != nil {
 		logger.WithDeviceID(deviceID).
 			Error(ctx, "Error parsing heartbeat payload on southbound mqtt", err)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to parse payload")
 		return
 	}
-
-	span.SetAttributes(
-		attribute.String("device.status", payload.GetStatus().String()),
-		attribute.String("device.timestamp", payload.GetTimestamp()),
-	)
 
 	logger.WithDeviceID(payload.GetDeviceId()).
 		InfoWithFields(ctx, "Heartbeat received on southbound mqtt", map[string]interface{}{
 			"status":    payload.GetStatus().String(),
 			"timestamp": payload.GetTimestamp(),
 		})
-
-	span.SetStatus(codes.Ok, "success")
 }
 
 // handleUsage processes usage messages from devices
-func (sb *SouthboundInterface) handleUsage(client mqtt.Client, msg mqtt.Message) {
+func (sb *SouthboundInterface) handleUsage(ctx context.Context, client mqtt.Client, msg mqtt.Message) {
 	topic := msg.Topic()
 	deviceID := extractDeviceID(topic)
-
-	ctx, span := mqttTracer.Start(context.Background(), fmt.Sprintf("[mqtt] %s received", topic),
-		trace.WithAttributes(
-			attribute.String("mqtt.topic", topic),
-			attribute.String("mqtt.device_id", deviceID),
-			attribute.String("mqtt.message_type", "usage"),
-			attribute.Int("mqtt.payload.size", len(msg.Payload())),
-		),
-	)
-	defer span.End()
 
 	var payload mqttpb.UsagePayload
 	opts := protojson.UnmarshalOptions{DiscardUnknown: true}
 	if err := opts.Unmarshal(msg.Payload(), &payload); err != nil {
 		logger.WithDeviceID(deviceID).
 			Error(ctx, "Error parsing usage payload on southbound mqtt", err)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to parse payload")
 		return
 	}
-
-	span.SetAttributes(
-		attribute.String("device.report_id", payload.GetReportId()),
-		attribute.String("device.strategy", payload.GetStrategy().String()),
-		attribute.Float64("device.measure", payload.GetMeasure()),
-		attribute.String("device.unit", payload.GetUnit()),
-	)
 
 	logger.WithDeviceID(payload.GetDeviceId()).
 		InfoWithFields(ctx, "Usage received on southbound mqtt", map[string]interface{}{
@@ -169,12 +123,8 @@ func (sb *SouthboundInterface) handleUsage(client mqtt.Client, msg mqtt.Message)
 		logger.WithDeviceID(payload.GetDeviceId()).
 			WithStream("event.device", "produce").
 			Error(ctx, "Error publishing usage event to Redis stream on southbound mqtt", err)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to publish to stream")
 		return
 	}
-
-	span.SetStatus(codes.Ok, "success")
 }
 
 // mapLedgerStatusToMQTTStatus maps ledger AuthorizationStatus to MQTT AuthorizationStatus
@@ -189,35 +139,17 @@ func mapLightningStatusToMQTTStatus(status lightningmodel.InvoiceStatus) mqttpb.
 }
 
 // handleAuthorizationRequest processes authorization requests from devices
-func (sb *SouthboundInterface) handleAuthorizationRequest(client mqtt.Client, msg mqtt.Message) {
+func (sb *SouthboundInterface) handleAuthorizationRequest(ctx context.Context, client mqtt.Client, msg mqtt.Message) {
 	topic := msg.Topic()
 	deviceID := extractDeviceID(topic)
-
-	ctx, span := mqttTracer.Start(context.Background(), fmt.Sprintf("[mqtt] %s received", topic),
-		trace.WithAttributes(
-			attribute.String("mqtt.topic", topic),
-			attribute.String("mqtt.device_id", deviceID),
-			attribute.String("mqtt.message_type", "authorization_request"),
-			attribute.Int("mqtt.payload.size", len(msg.Payload())),
-		),
-	)
-	defer span.End()
 
 	var request mqttpb.AuthorizationRequestPayload
 	opts := protojson.UnmarshalOptions{DiscardUnknown: true}
 	if err := opts.Unmarshal(msg.Payload(), &request); err != nil {
 		logger.WithDeviceID(deviceID).
 			Error(ctx, "Error parsing authorization request payload on southbound mqtt", err)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to parse payload")
 		return
 	}
-
-	span.SetAttributes(
-		attribute.String("device.request_id", request.GetRequestId()),
-		attribute.Int64("device.request_msat", request.GetRequestMsat()),
-		attribute.String("device.reason", request.GetReason()),
-	)
 
 	logger.WithDeviceID(request.GetDeviceId()).
 		InfoWithFields(ctx, "Authorization request received on southbound mqtt", map[string]interface{}{
@@ -241,8 +173,6 @@ func (sb *SouthboundInterface) handleAuthorizationRequest(client mqtt.Client, ms
 	if err != nil {
 		logger.WithDeviceID(deviceID).
 			Error(ctx, "Error calling ledger service on southbound mqtt", err)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "ledger service call failed")
 
 		// Send error response to device
 		responseTopic := fmt.Sprintf("/devices/%s/response/authorize", deviceID)
@@ -275,11 +205,6 @@ func (sb *SouthboundInterface) handleAuthorizationRequest(client mqtt.Client, ms
 		Reason:    ledgerResp.GetReason(),
 	}
 
-	span.SetAttributes(
-		attribute.String("authorization.status", response.Status.String()),
-		attribute.String("authorization.reason", response.Reason),
-	)
-
 	// If authorization was granted or is active, include authorization details
 	if ledgerResp.GetAuthorization() != nil {
 		auth := ledgerResp.GetAuthorization()
@@ -288,18 +213,11 @@ func (sb *SouthboundInterface) handleAuthorizationRequest(client mqtt.Client, ms
 		response.RemainingMsat = auth.GetRemainingMsat()
 		response.IssuedAt = auth.GetIssuedAt()
 		response.ExpiresAt = auth.GetExpiresAt()
-
-		span.SetAttributes(
-			attribute.String("authorization.id", auth.GetAuthorizationId()),
-			attribute.Int64("authorization.granted_msat", auth.GetGrantedMsat()),
-			attribute.Int64("authorization.remaining_msat", auth.GetRemainingMsat()),
-		)
 	}
 
 	// Include available balance if provided
 	if ledgerResp.GetAvailableMsat() > 0 {
 		response.AvailableMsat = ledgerResp.GetAvailableMsat()
-		span.SetAttributes(attribute.Int64("device.available_msat", ledgerResp.GetAvailableMsat()))
 	}
 
 	// Serialize response to JSON with short enum names
@@ -308,8 +226,6 @@ func (sb *SouthboundInterface) handleAuthorizationRequest(client mqtt.Client, ms
 	if err != nil {
 		logger.WithDeviceID(deviceID).
 			Error(ctx, "Error marshaling authorization response on southbound mqtt", err)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to marshal response")
 		return
 	}
 
@@ -318,8 +234,6 @@ func (sb *SouthboundInterface) handleAuthorizationRequest(client mqtt.Client, ms
 	if err := sb.mqttClient.Publish(ctx, responseTopic, 1, false, responseJSON); err != nil {
 		logger.WithDeviceID(deviceID).
 			Error(ctx, "Error publishing authorization response to device on southbound mqtt", err)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to publish response")
 		return
 	}
 
@@ -328,40 +242,20 @@ func (sb *SouthboundInterface) handleAuthorizationRequest(client mqtt.Client, ms
 			"topic":  responseTopic,
 			"status": response.Status.String(),
 		})
-
-	span.SetStatus(codes.Ok, "success")
 }
 
 // handleInvoiceRequest processes invoice requests from devices
-func (sb *SouthboundInterface) handleInvoiceRequest(client mqtt.Client, msg mqtt.Message) {
+func (sb *SouthboundInterface) handleInvoiceRequest(ctx context.Context, client mqtt.Client, msg mqtt.Message) {
 	topic := msg.Topic()
 	deviceID := extractDeviceID(topic)
-
-	ctx, span := mqttTracer.Start(context.Background(), fmt.Sprintf("[mqtt] %s received", topic),
-		trace.WithAttributes(
-			attribute.String("mqtt.topic", topic),
-			attribute.String("mqtt.device_id", deviceID),
-			attribute.String("mqtt.message_type", "invoice_request"),
-			attribute.Int("mqtt.payload.size", len(msg.Payload())),
-		),
-	)
-	defer span.End()
 
 	var request mqttpb.InvoiceRequestPayload
 	opts := protojson.UnmarshalOptions{DiscardUnknown: true}
 	if err := opts.Unmarshal(msg.Payload(), &request); err != nil {
 		logger.WithDeviceID(deviceID).
 			Error(ctx, "Error parsing invoice request payload on southbound mqtt", err)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to parse payload")
 		return
 	}
-
-	span.SetAttributes(
-		attribute.String("device.request_id", request.GetRequestId()),
-		attribute.Int64("device.amount_msat", request.GetAmountMsat()),
-		attribute.String("device.reason", request.GetReason()),
-	)
 
 	logger.WithDeviceID(request.GetDeviceId()).
 		InfoWithFields(ctx, "Invoice request received on southbound mqtt", map[string]interface{}{
@@ -374,7 +268,6 @@ func (sb *SouthboundInterface) handleInvoiceRequest(client mqtt.Client, msg mqtt
 	if sb.lightningClient == nil {
 		logger.WithDeviceID(deviceID).
 			Warn(ctx, "Lightning client not initialized on southbound mqtt; cannot process invoice request")
-		span.SetStatus(codes.Error, "lightning client not initialized")
 		return
 	}
 
@@ -390,8 +283,6 @@ func (sb *SouthboundInterface) handleInvoiceRequest(client mqtt.Client, msg mqtt
 	if err != nil {
 		logger.WithDeviceID(deviceID).
 			Error(ctx, "Error calling lightning service on southbound mqtt", err)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "lightning service call failed")
 
 		// Send error response
 		responseTopic := fmt.Sprintf("/devices/%s/response/invoice", deviceID)
@@ -419,7 +310,6 @@ func (sb *SouthboundInterface) handleInvoiceRequest(client mqtt.Client, msg mqtt
 	if invoice == nil {
 		logger.WithDeviceID(deviceID).
 			Warn(ctx, "Lightning service returned empty invoice on southbound mqtt")
-		span.SetStatus(codes.Error, "empty invoice response")
 		return
 	}
 
@@ -433,20 +323,12 @@ func (sb *SouthboundInterface) handleInvoiceRequest(client mqtt.Client, msg mqtt
 		ExpiresAt:  invoice.GetExpiresAt(),
 	}
 
-	span.SetAttributes(
-		attribute.String("invoice.id", invoice.GetInvoiceId()),
-		attribute.String("invoice.status", response.Status.String()),
-		attribute.Int64("invoice.amount_msat", invoice.GetAmountMsat()),
-	)
-
 	// Serialize response to JSON with short enum names
 	marshalOpts := protojson.MarshalOptions{UseProtoNames: true}
 	responseJSON, err := marshalOpts.Marshal(response)
 	if err != nil {
 		logger.WithDeviceID(deviceID).
 			Error(ctx, "Error marshaling invoice response on southbound mqtt", err)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to marshal response")
 		return
 	}
 
@@ -455,8 +337,6 @@ func (sb *SouthboundInterface) handleInvoiceRequest(client mqtt.Client, msg mqtt
 	if err := sb.mqttClient.Publish(ctx, responseTopic, 1, false, responseJSON); err != nil {
 		logger.WithDeviceID(deviceID).
 			Error(ctx, "Error publishing invoice response to device on southbound mqtt", err)
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "failed to publish response")
 		return
 	}
 
@@ -466,6 +346,4 @@ func (sb *SouthboundInterface) handleInvoiceRequest(client mqtt.Client, msg mqtt
 			"invoice_id": response.InvoiceId,
 			"status":     response.Status.String(),
 		})
-
-	span.SetStatus(codes.Ok, "success")
 }
