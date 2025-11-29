@@ -43,9 +43,8 @@ func NewSmartMeter(deviceID, deviceSecret string, cfg *Config) *SmartMeter {
 	// Default DeviceConfig values (will be overwritten by retained MQTT config)
 	defaultDeviceConfig := &DeviceConfig{
 		DeviceId:             deviceID,
-		Unit:                 "kWh",
-		UnitPrice:            "10",
-		PricingUnit:          "msat",
+		MeasurementUnit:      "kWh",
+		UnitPriceMsat:        10,
 		ReportingStrategy:    mqttmodel.ReportingStrategy_REPORTING_STRATEGY_INTERVAL,
 		ReportingInterval:    30,
 		HeartbeatInterval:    10,

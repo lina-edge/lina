@@ -2,9 +2,8 @@
 
 export interface DeviceConfig {
   device_id: string
-  unit: string
-  unit_price: string
-  pricing_unit: string
+  measurement_unit: string
+  unit_price_msat: number
   reporting_strategy: "interval" | "delta" | "total"
   reporting_interval: number
   heartbeat_interval: number

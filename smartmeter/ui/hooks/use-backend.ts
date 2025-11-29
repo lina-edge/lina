@@ -15,9 +15,8 @@ interface WSMessage {
 
 const createDefaultConfig = (timestamp: string): DeviceConfig => ({
   device_id: "",
-  unit: "",
-  unit_price: "0",
-  pricing_unit: "",
+  measurement_unit: "",
+  unit_price_msat: 0,
   reporting_strategy: "interval",
   reporting_interval: 0,
   heartbeat_interval: 0,

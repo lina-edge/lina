@@ -368,7 +368,7 @@ func (sb *SouthboundInterface) PublishUsageReport(reportID string, kWhConsumed f
 		ReportId:  reportID,
 		Strategy:  devCfg.ReportingStrategy,
 		Measure:   kWhConsumed,
-		Unit:      devCfg.Unit,
+		Unit:      devCfg.MeasurementUnit,
 		Timestamp: time.Now().Format(time.RFC3339),
 	}
 

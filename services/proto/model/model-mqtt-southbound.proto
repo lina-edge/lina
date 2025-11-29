@@ -35,14 +35,13 @@ enum ReportingStrategy {
 
 message ConfigPayload {
   string device_id = 1;
-  string unit = 2;                    // e.g., "kWh", "L", "pages"
-  string unit_price = 3;              // price per unit as string
-  string pricing_unit = 4;           // "msat"
-  ReportingStrategy reporting_strategy = 5;
-  int32 reporting_interval = 6;       // seconds between reports
-  int32 heartbeat_interval = 7;      // expected heartbeat frequency (seconds)
-  int64 authorize_request_msat = 8;   // expected amount in each authorization request
-  string timestamp = 9;               // ISO-8601 timestamp
+  string measurement_unit = 2;       // e.g., "kWh", "L", "pages"
+  int64 unit_price_msat = 3;         // price per unit in millisatoshis
+  ReportingStrategy reporting_strategy = 4;
+  int32 reporting_interval = 5;       // seconds between reports
+  int32 heartbeat_interval = 6;      // expected heartbeat frequency (seconds)
+  int64 authorize_request_msat = 7;   // expected amount in each authorization request
+  string timestamp = 8;               // ISO-8601 timestamp
 }
 
 // ============================================================================

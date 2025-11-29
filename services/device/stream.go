@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -55,26 +54,8 @@ func (sc *StreamClient) PublishDeviceUsageReportedEvent(ctx context.Context, pay
 		return fmt.Errorf("failed to get device config for %s: %w", payload.GetDeviceId(), err)
 	}
 
-	// Parse unit_price string to int64 (assuming it's already in msat if pricing_unit is "msat")
-	var pricePerUnitMsat int64
-	if device.PricingUnit == "msat" {
-		// Parse the unit_price string to int64
-		parsed, err := strconv.ParseInt(device.UnitPrice, 10, 64)
-		if err != nil {
-			return fmt.Errorf("failed to parse unit_price %s for device %s: %w", device.UnitPrice, payload.GetDeviceId(), err)
-		}
-		pricePerUnitMsat = parsed
-	} else {
-		// For other pricing units, we'd need conversion logic
-		// For now, assume msat or log a warning
-		logger.WithDeviceID(payload.GetDeviceId()).
-			Warnf(ctx, "Device has pricing_unit %s, assuming msat", device.PricingUnit)
-		parsed, err := strconv.ParseInt(device.UnitPrice, 10, 64)
-		if err != nil {
-			return fmt.Errorf("failed to parse unit_price %s for device %s: %w", device.UnitPrice, payload.GetDeviceId(), err)
-		}
-		pricePerUnitMsat = parsed
-	}
+	// Use unit_price_msat directly (already in msat)
+	pricePerUnitMsat := device.UnitPriceMsat
 
 	// Convert MQTT UsagePayload to device UsageRecord
 	usageRecord := &devicepb.UsageRecord{

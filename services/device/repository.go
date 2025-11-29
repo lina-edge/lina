@@ -12,9 +12,8 @@ import (
 // Device represents a registered IoT device
 type Device struct {
 	DeviceID             string    `json:"device_id"`
-	Unit                 string    `json:"unit"`                   // e.g., "kWh"
-	UnitPrice            string    `json:"unit_price"`             // price as string
-	PricingUnit          string    `json:"pricing_unit"`           // e.g., "msat"
+	MeasurementUnit      string    `json:"measurement_unit"`       // e.g., "kWh"
+	UnitPriceMsat        int64     `json:"unit_price_msat"`         // price per unit in millisatoshis
 	ReportingStrategy    string    `json:"reporting_strategy"`     // "interval" | "delta" | "total"
 	ReportingInterval    int       `json:"reporting_interval"`     // seconds between reports
 	HeartbeatInterval    int       `json:"heartbeat_interval"`     // expected heartbeat frequency (s)
@@ -38,9 +37,8 @@ func NewDeviceRepository(ctx context.Context, dbPath string) (*DeviceRepository,
 	createTable := `
 	CREATE TABLE IF NOT EXISTS devices (
 		device_id TEXT PRIMARY KEY,
-		unit TEXT NOT NULL,
-		unit_price TEXT NOT NULL,
-		pricing_unit TEXT NOT NULL,
+		measurement_unit TEXT NOT NULL,
+		unit_price_msat INTEGER NOT NULL,
 		reporting_strategy TEXT NOT NULL,
 		reporting_interval INTEGER NOT NULL,
 		heartbeat_interval INTEGER NOT NULL,
@@ -59,16 +57,15 @@ func NewDeviceRepository(ctx context.Context, dbPath string) (*DeviceRepository,
 func (r *DeviceRepository) CreateDevice(ctx context.Context, device *Device) error {
 	query := `
 	INSERT INTO devices (
-		device_id, unit, unit_price, pricing_unit, reporting_strategy,
+		device_id, measurement_unit, unit_price_msat, reporting_strategy,
 		reporting_interval, heartbeat_interval, authorize_request_msat, timestamp
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
 
 	_, err := r.db.Exec(
 		query,
 		device.DeviceID,
-		device.Unit,
-		device.UnitPrice,
-		device.PricingUnit,
+		device.MeasurementUnit,
+		device.UnitPriceMsat,
 		device.ReportingStrategy,
 		device.ReportingInterval,
 		device.HeartbeatInterval,
@@ -87,7 +84,7 @@ func (r *DeviceRepository) CreateDevice(ctx context.Context, device *Device) err
 // GetDevice retrieves a device by ID
 func (r *DeviceRepository) GetDevice(ctx context.Context, deviceID string) (*Device, error) {
 	query := `
-	SELECT device_id, unit, unit_price, pricing_unit, reporting_strategy,
+	SELECT device_id, measurement_unit, unit_price_msat, reporting_strategy,
 	       reporting_interval, heartbeat_interval, authorize_request_msat, timestamp
 	FROM devices
 	WHERE device_id = ?`
@@ -97,9 +94,8 @@ func (r *DeviceRepository) GetDevice(ctx context.Context, deviceID string) (*Dev
 
 	err := r.db.QueryRow(query, deviceID).Scan(
 		&device.DeviceID,
-		&device.Unit,
-		&device.UnitPrice,
-		&device.PricingUnit,
+		&device.MeasurementUnit,
+		&device.UnitPriceMsat,
 		&device.ReportingStrategy,
 		&device.ReportingInterval,
 		&device.HeartbeatInterval,
@@ -125,9 +121,8 @@ func (r *DeviceRepository) GetDevice(ctx context.Context, deviceID string) (*Dev
 func (r *DeviceRepository) UpdateDevice(ctx context.Context, device *Device) error {
 	query := `
 	UPDATE devices SET
-		unit = ?,
-		unit_price = ?,
-		pricing_unit = ?,
+		measurement_unit = ?,
+		unit_price_msat = ?,
 		reporting_strategy = ?,
 		reporting_interval = ?,
 		heartbeat_interval = ?,
@@ -137,9 +132,8 @@ func (r *DeviceRepository) UpdateDevice(ctx context.Context, device *Device) err
 
 	result, err := r.db.Exec(
 		query,
-		device.Unit,
-		device.UnitPrice,
-		device.PricingUnit,
+		device.MeasurementUnit,
+		device.UnitPriceMsat,
 		device.ReportingStrategy,
 		device.ReportingInterval,
 		device.HeartbeatInterval,
@@ -168,7 +162,7 @@ func (r *DeviceRepository) UpdateDevice(ctx context.Context, device *Device) err
 // ListDevices retrieves all devices
 func (r *DeviceRepository) ListDevices(ctx context.Context) ([]*Device, error) {
 	query := `
-	SELECT device_id, unit, unit_price, pricing_unit, reporting_strategy,
+	SELECT device_id, measurement_unit, unit_price_msat, reporting_strategy,
 	       reporting_interval, heartbeat_interval, authorize_request_msat, timestamp
 	FROM devices
 	ORDER BY timestamp DESC`
@@ -186,9 +180,8 @@ func (r *DeviceRepository) ListDevices(ctx context.Context) ([]*Device, error) {
 
 		err := rows.Scan(
 			&device.DeviceID,
-			&device.Unit,
-			&device.UnitPrice,
-			&device.PricingUnit,
+			&device.MeasurementUnit,
+			&device.UnitPriceMsat,
 			&device.ReportingStrategy,
 			&device.ReportingInterval,
 			&device.HeartbeatInterval,

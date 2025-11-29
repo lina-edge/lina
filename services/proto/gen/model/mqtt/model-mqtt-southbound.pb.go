@@ -358,14 +358,13 @@ func (x *HeartbeatPayload) GetTimestamp() string {
 type ConfigPayload struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
 	DeviceId             string                 `protobuf:"bytes,1,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
-	Unit                 string                 `protobuf:"bytes,2,opt,name=unit,proto3" json:"unit,omitempty"`                                  // e.g., "kWh", "L", "pages"
-	UnitPrice            string                 `protobuf:"bytes,3,opt,name=unit_price,json=unitPrice,proto3" json:"unit_price,omitempty"`       // price per unit as string
-	PricingUnit          string                 `protobuf:"bytes,4,opt,name=pricing_unit,json=pricingUnit,proto3" json:"pricing_unit,omitempty"` // "msat"
-	ReportingStrategy    ReportingStrategy      `protobuf:"varint,5,opt,name=reporting_strategy,json=reportingStrategy,proto3,enum=iot.payperuse.edge.model.mqtt.ReportingStrategy" json:"reporting_strategy,omitempty"`
-	ReportingInterval    int32                  `protobuf:"varint,6,opt,name=reporting_interval,json=reportingInterval,proto3" json:"reporting_interval,omitempty"`            // seconds between reports
-	HeartbeatInterval    int32                  `protobuf:"varint,7,opt,name=heartbeat_interval,json=heartbeatInterval,proto3" json:"heartbeat_interval,omitempty"`            // expected heartbeat frequency (seconds)
-	AuthorizeRequestMsat int64                  `protobuf:"varint,8,opt,name=authorize_request_msat,json=authorizeRequestMsat,proto3" json:"authorize_request_msat,omitempty"` // expected amount in each authorization request
-	Timestamp            string                 `protobuf:"bytes,9,opt,name=timestamp,proto3" json:"timestamp,omitempty"`                                                      // ISO-8601 timestamp
+	MeasurementUnit      string                 `protobuf:"bytes,2,opt,name=measurement_unit,json=measurementUnit,proto3" json:"measurement_unit,omitempty"` // e.g., "kWh", "L", "pages"
+	UnitPriceMsat        int64                  `protobuf:"varint,3,opt,name=unit_price_msat,json=unitPriceMsat,proto3" json:"unit_price_msat,omitempty"`    // price per unit in millisatoshis
+	ReportingStrategy    ReportingStrategy      `protobuf:"varint,4,opt,name=reporting_strategy,json=reportingStrategy,proto3,enum=iot.payperuse.edge.model.mqtt.ReportingStrategy" json:"reporting_strategy,omitempty"`
+	ReportingInterval    int32                  `protobuf:"varint,5,opt,name=reporting_interval,json=reportingInterval,proto3" json:"reporting_interval,omitempty"`            // seconds between reports
+	HeartbeatInterval    int32                  `protobuf:"varint,6,opt,name=heartbeat_interval,json=heartbeatInterval,proto3" json:"heartbeat_interval,omitempty"`            // expected heartbeat frequency (seconds)
+	AuthorizeRequestMsat int64                  `protobuf:"varint,7,opt,name=authorize_request_msat,json=authorizeRequestMsat,proto3" json:"authorize_request_msat,omitempty"` // expected amount in each authorization request
+	Timestamp            string                 `protobuf:"bytes,8,opt,name=timestamp,proto3" json:"timestamp,omitempty"`                                                      // ISO-8601 timestamp
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -407,25 +406,18 @@ func (x *ConfigPayload) GetDeviceId() string {
 	return ""
 }
 
-func (x *ConfigPayload) GetUnit() string {
+func (x *ConfigPayload) GetMeasurementUnit() string {
 	if x != nil {
-		return x.Unit
+		return x.MeasurementUnit
 	}
 	return ""
 }
 
-func (x *ConfigPayload) GetUnitPrice() string {
+func (x *ConfigPayload) GetUnitPriceMsat() int64 {
 	if x != nil {
-		return x.UnitPrice
+		return x.UnitPriceMsat
 	}
-	return ""
-}
-
-func (x *ConfigPayload) GetPricingUnit() string {
-	if x != nil {
-		return x.PricingUnit
-	}
-	return ""
+	return 0
 }
 
 func (x *ConfigPayload) GetReportingStrategy() ReportingStrategy {
@@ -1149,18 +1141,16 @@ const file_model_model_mqtt_southbound_proto_rawDesc = "" +
 	"\x10HeartbeatPayload\x12\x1b\n" +
 	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12C\n" +
 	"\x06status\x18\x02 \x01(\x0e2+.iot.payperuse.edge.model.mqtt.DeviceStatusR\x06status\x12\x1c\n" +
-	"\ttimestamp\x18\x03 \x01(\tR\ttimestamp\"\x95\x03\n" +
+	"\ttimestamp\x18\x03 \x01(\tR\ttimestamp\"\x92\x03\n" +
 	"\rConfigPayload\x12\x1b\n" +
-	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12\x12\n" +
-	"\x04unit\x18\x02 \x01(\tR\x04unit\x12\x1d\n" +
-	"\n" +
-	"unit_price\x18\x03 \x01(\tR\tunitPrice\x12!\n" +
-	"\fpricing_unit\x18\x04 \x01(\tR\vpricingUnit\x12_\n" +
-	"\x12reporting_strategy\x18\x05 \x01(\x0e20.iot.payperuse.edge.model.mqtt.ReportingStrategyR\x11reportingStrategy\x12-\n" +
-	"\x12reporting_interval\x18\x06 \x01(\x05R\x11reportingInterval\x12-\n" +
-	"\x12heartbeat_interval\x18\a \x01(\x05R\x11heartbeatInterval\x124\n" +
-	"\x16authorize_request_msat\x18\b \x01(\x03R\x14authorizeRequestMsat\x12\x1c\n" +
-	"\ttimestamp\x18\t \x01(\tR\ttimestamp\"\xac\x01\n" +
+	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12)\n" +
+	"\x10measurement_unit\x18\x02 \x01(\tR\x0fmeasurementUnit\x12&\n" +
+	"\x0funit_price_msat\x18\x03 \x01(\x03R\runitPriceMsat\x12_\n" +
+	"\x12reporting_strategy\x18\x04 \x01(\x0e20.iot.payperuse.edge.model.mqtt.ReportingStrategyR\x11reportingStrategy\x12-\n" +
+	"\x12reporting_interval\x18\x05 \x01(\x05R\x11reportingInterval\x12-\n" +
+	"\x12heartbeat_interval\x18\x06 \x01(\x05R\x11heartbeatInterval\x124\n" +
+	"\x16authorize_request_msat\x18\a \x01(\x03R\x14authorizeRequestMsat\x12\x1c\n" +
+	"\ttimestamp\x18\b \x01(\tR\ttimestamp\"\xac\x01\n" +
 	"\x0eControlPayload\x12G\n" +
 	"\acommand\x18\x01 \x01(\x0e2-.iot.payperuse.edge.model.mqtt.ControlCommandR\acommand\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x0e\n" +

@@ -16,9 +16,8 @@ import (
 type CreateDeviceRequest struct {
 	DeviceID             string `json:"device_id" binding:"required"`
 	DeviceSecret         string `json:"device_secret" binding:"required"`
-	Unit                 string `json:"unit" binding:"required"`
-	UnitPrice            string `json:"unit_price" binding:"required"`
-	PricingUnit          string `json:"pricing_unit" binding:"required"`
+	MeasurementUnit      string `json:"measurement_unit" binding:"required"`
+	UnitPriceMsat        int64  `json:"unit_price_msat" binding:"required"`
 	ReportingStrategy    string `json:"reporting_strategy" binding:"required"`
 	ReportingInterval    int    `json:"reporting_interval" binding:"required"`
 	HeartbeatInterval    int    `json:"heartbeat_interval" binding:"required"`
@@ -99,9 +98,8 @@ func (nb *NorthboundInterface) createDevice(c *gin.Context) {
 	// Create device struct (note: we don't store device_secret)
 	device := &Device{
 		DeviceID:             req.DeviceID,
-		Unit:                 req.Unit,
-		UnitPrice:            req.UnitPrice,
-		PricingUnit:          req.PricingUnit,
+		MeasurementUnit:      req.MeasurementUnit,
+		UnitPriceMsat:        req.UnitPriceMsat,
 		ReportingStrategy:    req.ReportingStrategy,
 		ReportingInterval:    req.ReportingInterval,
 		HeartbeatInterval:    req.HeartbeatInterval,
@@ -236,9 +234,8 @@ func (nb *NorthboundInterface) publishDeviceConfig(ctx context.Context, device *
 	// Create config payload
 	config := &mqttpb.ConfigPayload{
 		DeviceId:             device.DeviceID,
-		Unit:                 device.Unit,
-		UnitPrice:            device.UnitPrice,
-		PricingUnit:          device.PricingUnit,
+		MeasurementUnit:     device.MeasurementUnit,
+		UnitPriceMsat:        device.UnitPriceMsat,
 		ReportingStrategy:    reportingStrategy,
 		ReportingInterval:    int32(device.ReportingInterval),
 		HeartbeatInterval:    int32(device.HeartbeatInterval),
