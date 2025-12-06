@@ -83,6 +83,32 @@ func (s *EastWestServer) CreateOrGetAuthorization(ctx context.Context, req *ledg
 		}, nil
 	}
 
+	// Check if there's an active authorization for this device (even with different request_id)
+	// This handles the case where the device reconnects after service restart with a new request_id
+	activeAuth, activeAuthStatus, err := s.repo.GetActiveAuthorizationForDevice(ctx, tx, req.DeviceId)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, status.Errorf(codes.Internal, "failed to check active authorization: %v", err)
+	}
+
+	// If an active authorization exists for this device, return it
+	if activeAuth != nil {
+		if err := tx.Commit(); err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to commit: %v", err)
+		}
+		// Determine status: if still active, return ACTIVE, otherwise return GRANTED (for completed/expired)
+		respStatus := ledgermodel.AuthorizationStatus_AUTHORIZATION_STATUS_ACTIVE
+		if activeAuthStatus != "active" {
+			respStatus = ledgermodel.AuthorizationStatus_AUTHORIZATION_STATUS_GRANTED
+		}
+		return &ledgermodel.CreateAuthorizationResponse{
+			DeviceId:      req.DeviceId,
+			RequestId:     req.RequestId,
+			Status:        respStatus,
+			Authorization: activeAuth,
+			Reason:        "ALREADY_ACTIVE",
+		}, nil
+	}
+
 	// Check if we have sufficient balance
 	if balanceMsat < req.RequestMsat {
 		if err := tx.Commit(); err != nil {

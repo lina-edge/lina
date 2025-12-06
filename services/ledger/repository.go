@@ -436,6 +436,43 @@ func (r *LedgerRepository) GetActiveAuthorization(ctx context.Context, tx *sql.T
 	return authorizationID, remainingMsat, grantedMsat, overflowMsat, expiresAt, status, nil
 }
 
+// GetActiveAuthorizationForDevice retrieves the most recent active authorization for a device
+// Returns the authorization and its status, or sql.ErrNoRows if none exists
+func (r *LedgerRepository) GetActiveAuthorizationForDevice(ctx context.Context, tx *sql.Tx, deviceID string) (*ledgermodel.Authorization, string, error) {
+	now := time.Now().Format(time.RFC3339)
+	query := `
+		SELECT authorization_id, device_id, granted_msat, remaining_msat, issued_at, expires_at, status
+		FROM authorizations
+		WHERE device_id = ? AND status = 'active' AND expires_at > ?
+		ORDER BY created_at DESC
+		LIMIT 1`
+	attrs := []attribute.KeyValue{
+		attribute.String("db.operation", "SELECT"),
+		attribute.String("db.table", "authorizations"),
+		attribute.String("device.id", deviceID),
+	}
+	row := r.sqlTracer.QueryRowWithSpan(ctx, "[repository] get active authorization for device", attrs, tx, query, deviceID, now)
+
+	var authID, deviceIDResult, issuedAt, expiresAt, authStatus string
+	var grantedMsat, remainingMsat int64
+
+	err := row.Scan(&authID, &deviceIDResult, &grantedMsat, &remainingMsat, &issuedAt, &expiresAt, &authStatus)
+	if err != nil {
+		return nil, "", err
+	}
+
+	auth := &ledgermodel.Authorization{
+		DeviceId:        deviceIDResult,
+		AuthorizationId: authID,
+		GrantedMsat:     grantedMsat,
+		RemainingMsat:   remainingMsat,
+		IssuedAt:        issuedAt,
+		ExpiresAt:       expiresAt,
+	}
+
+	return auth, authStatus, nil
+}
+
 // UpdateAuthorization updates an authorization's remaining amount, consumed amount, overflow amount, and status
 func (r *LedgerRepository) UpdateAuthorization(ctx context.Context, tx *sql.Tx, authorizationID string, remainingMsat int64, consumedMsat int64, overflowMsat int64, status string) error {
 	query := `

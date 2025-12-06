@@ -398,6 +398,31 @@ func (m *SmartMeter) HandleAuthorizationGranted(response *AuthorizeResponse) {
 	// Device service will send RESUME control command to restore appliances
 }
 
+// HandleAuthorizationActive processes an active authorization (existing authorization returned)
+func (m *SmartMeter) HandleAuthorizationActive(response *AuthorizeResponse) {
+	auth := &Authorization{
+		AuthorizationID: response.AuthorizationId,
+		RequestID:       response.RequestId,
+		GrantedMsat:     response.GrantedMsat,
+		RemainingMsat:   response.RemainingMsat,
+		IssuedAt:        response.IssuedAt,
+		ExpiresAt:       response.ExpiresAt,
+		Status:          "ACTIVE",
+		Reason:          response.Reason,
+	}
+
+	m.mu.Lock()
+	m.state.CurrentAuthorization = auth
+	m.state.DeviceStatus = "ONLINE"
+	m.pendingAuthorization = false
+	m.mu.Unlock()
+
+	m.AddLog("Authorization active (existing): "+formatMsat(response.RemainingMsat)+" msat remaining (request_id: "+response.RequestId+")", "info")
+	m.notifyStateChange()
+
+	// Device service will send RESUME control command to restore appliances
+}
+
 // HandleAuthorizationRejected processes a rejected authorization
 func (m *SmartMeter) HandleAuthorizationRejected(response *AuthorizeResponse) {
 	m.AddLog("Authorization rejected: "+response.RequestId, "error")

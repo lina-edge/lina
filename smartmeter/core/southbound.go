@@ -201,6 +201,11 @@ func (sb *SouthboundInterface) handleAuthorizeResponse(client mqtt.Client, msg m
 	case mqttmodel.AuthorizationStatus_AUTHORIZATION_STATUS_GRANTED:
 		sb.meter.HandleAuthorizationGranted(domainResponse)
 
+	case mqttmodel.AuthorizationStatus_AUTHORIZATION_STATUS_ACTIVE:
+		// ACTIVE means an existing authorization was found and returned
+		// Device should transition to ONLINE using the existing authorization
+		sb.meter.HandleAuthorizationActive(domainResponse)
+
 	case mqttmodel.AuthorizationStatus_AUTHORIZATION_STATUS_REJECTED:
 		sb.meter.HandleAuthorizationRejected(domainResponse)
 		// Device service will send STOP control command, so no need to halt here
