@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
     container_name: caddy
     ports:
-      - "8080:80"
+      - "8080:80" # Northbound
     depends_on:
       device:
         condition: service_started
@@ -23,6 +23,8 @@ services:
     container_name: redis
     ports:
       - "${REDIS_PORT:-6379}:6379"
+    env_file:
+      - .env
     volumes:
       - redis-data:/data
     healthcheck:
@@ -39,14 +41,11 @@ services:
       dockerfile: Dockerfile
     container_name: mosquitto
     ports:
-      - "${MQTT_TLS_PORT:-8883}:8883"
+      - "${MQTT_TLS_PORT:-8883}:8883" # Southbound
     volumes:
       - mosquitto-data:/mosquitto/data
-    environment:
-      - MQTT_USERNAME=${MQTT_USERNAME:-}
-      - MQTT_PASSWORD=${MQTT_PASSWORD:-}
-      - MQTT_DYNSEC_ADMIN_USER=${MQTT_DYNSEC_ADMIN_USER:-}
-      - MQTT_DYNSEC_ADMIN_PASSWORD=${MQTT_DYNSEC_ADMIN_PASSWORD:-}
+    env_file:
+      - .env
     healthcheck:
       test: ["CMD-SHELL", "/mosquitto/config/healthcheck.sh"]
       interval: 10s
@@ -62,41 +61,16 @@ services:
       args:
         SERVICE: device
     container_name: device
-    expose:
-      - "8080"
     environment:
-      - MQTT_BROKER=${MQTT_BROKER:-mosquitto}
-      - MQTT_PORT=${MQTT_PORT:-1883}
-      - MQTT_TLS_PORT=${MQTT_TLS_PORT:-8883}
-      - MQTT_USE_TLS=${MQTT_USE_TLS:-true}
-      - MQTT_TLS_SKIP_VERIFY=${MQTT_TLS_SKIP_VERIFY:-false}
-      - MQTT_TLS_SERVER_NAME=${MQTT_TLS_SERVER_NAME:-mosquitto}
-      - MQTT_TLS_CA_CERT=${MQTT_TLS_CA_CERT:-/certs/ca.crt}
-      - MQTT_TLS_REQUIRE_EDGE_CERT=${MQTT_TLS_REQUIRE_EDGE_CERT:-false}
-      - MQTT_TLS_EDGE_CERT=${MQTT_TLS_EDGE_CERT:-/certs/edge.crt}
-      - MQTT_TLS_EDGE_KEY=${MQTT_TLS_EDGE_KEY:-/certs/edge.key}
-      - MQTT_CLIENT_ID=${MQTT_CLIENT_ID:-device-service}
-      - MQTT_USERNAME=${MQTT_USERNAME:-}
-      - MQTT_PASSWORD=${MQTT_PASSWORD:-}
-      - MQTT_DYNSEC_ADMIN_USER=${MQTT_DYNSEC_ADMIN_USER:-}
-      - MQTT_DYNSEC_ADMIN_PASSWORD=${MQTT_DYNSEC_ADMIN_PASSWORD:-}
-      - REDIS_HOST=${REDIS_HOST:-redis}
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
-      - REDIS_DB=${REDIS_DB:-0}
-      - LEDGER_GRPC_HOST=${LEDGER_GRPC_HOST:-ledger}
-      - LEDGER_GRPC_PORT=${LEDGER_GRPC_PORT:-9090}
-      - LIGHTNING_GRPC_HOST=${LIGHTNING_GRPC_HOST:-lightning}
-      - LIGHTNING_GRPC_PORT=${LIGHTNING_GRPC_PORT:-9090}
-      - LIGHTNING_RPC_TIMEOUT_SECONDS=${LIGHTNING_RPC_TIMEOUT_SECONDS:-30}
-      - DB_PATH=${DEVICE_DB_PATH:-/data/devices.db}
-      - GIN_MODE=release
-      - OTEL_RESOURCE_ATTRIBUTES=${OTEL_RESOURCE_ATTRIBUTES:-service.name=device-service}
-      - OTEL_TRACES_EXPORTER=${OTEL_TRACES_EXPORTER:-otlp}
-      - OTEL_METRICS_EXPORTER=${OTEL_METRICS_EXPORTER:-otlp}
-      - OTEL_EXPORTER_OTLP_PROTOCOL=${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
-      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-jaeger:4317}
-      - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-device-service}
+      - MQTT_BROKER=mosquitto
+      - REDIS_HOST=redis
+      - LEDGER_GRPC_HOST=ledger
+      - LEDGER_GRPC_PORT=${GRPC_PORT}
+      - LIGHTNING_GRPC_HOST=lightning
+      - LIGHTNING_GRPC_PORT=${GRPC_PORT}
+      - DB_PATH=/data/devices.db
+    env_file:
+      - .env
     volumes:
       - ./mosquitto/certs:/certs:ro
       - device-data:/data
@@ -117,23 +91,11 @@ services:
       args:
         SERVICE: ledger
     container_name: ledger
-    expose:
-      - "8080"
     environment:
-      - DB_PATH=${LEDGER_DB_PATH:-/data/ledger.db}
-      - SERVICE_TOKEN=${LEDGER_SERVICE_TOKEN:-dev-token}
-      - LISTEN_ADDR=${LEDGER_LISTEN_ADDR:-:8080}
-      - GRPC_ADDR=${LEDGER_GRPC_ADDR:-:9090}
-      - REDIS_HOST=${REDIS_HOST:-redis}
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
-      - REDIS_DB=${REDIS_DB:-0}
-      - GIN_MODE=release
-      - OTEL_TRACES_EXPORTER=${OTEL_TRACES_EXPORTER:-otlp}
-      - OTEL_METRICS_EXPORTER=${OTEL_METRICS_EXPORTER:-otlp}
-      - OTEL_EXPORTER_OTLP_PROTOCOL=${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
-      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-jaeger:4317}
-      - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-ledger-service}
+      - REDIS_HOST=redis
+      - DB_PATH=/data/ledger.db
+    env_file:
+      - .env
     volumes:
       - ledger-data:/data
     depends_on:
@@ -148,23 +110,11 @@ services:
       args:
         SERVICE: consumption
     container_name: consumption
-    expose:
-      - "8080"
     environment:
-      - DB_PATH=${CONSUMPTION_DB_PATH:-/data/consumption.db}
-      - SERVICE_TOKEN=${CONSUMPTION_SERVICE_TOKEN:-dev-token}
-      - LISTEN_ADDR=${CONSUMPTION_LISTEN_ADDR:-:8080}
-      - GRPC_ADDR=${CONSUMPTION_GRPC_ADDR:-:9090}
       - REDIS_HOST=${REDIS_HOST:-redis}
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
-      - REDIS_DB=${REDIS_DB:-0}
-      - GIN_MODE=release
-      - OTEL_TRACES_EXPORTER=${OTEL_TRACES_EXPORTER:-otlp}
-      - OTEL_METRICS_EXPORTER=${OTEL_METRICS_EXPORTER:-otlp}
-      - OTEL_EXPORTER_OTLP_PROTOCOL=${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
-      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-jaeger:4317}
-      - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-consumption-service}
+      - DB_PATH=/data/consumption.db
+    env_file:
+      - .env
     volumes:
       - consumption-data:/data
     depends_on:
@@ -179,26 +129,12 @@ services:
       args:
         SERVICE: lightning
     container_name: lightning
-    expose:
-      - "8080"
     environment:
       - LND_HOST=host.docker.internal:10001
-      - LND_MACAROON_HEX=${LND_MACAROON_HEX:-}
-      - LND_TLS_CERT_HEX=${LND_TLS_CERT_HEX:-}
-      - DB_PATH=${LIGHTNING_DB_PATH:-/data/lightning.db}
-      - SERVICE_TOKEN=${LIGHTNING_SERVICE_TOKEN:-dev-token}
-      - LISTEN_ADDR=${LIGHTNING_LISTEN_ADDR:-:8080}
-      - GRPC_ADDR=${LIGHTNING_GRPC_ADDR:-:9090}
-      - REDIS_HOST=${REDIS_HOST:-redis}
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
-      - REDIS_DB=${REDIS_DB:-0}
-      - GIN_MODE=release
-      - OTEL_TRACES_EXPORTER=${OTEL_TRACES_EXPORTER:-otlp}
-      - OTEL_METRICS_EXPORTER=${OTEL_METRICS_EXPORTER:-otlp}
-      - OTEL_EXPORTER_OTLP_PROTOCOL=${OTEL_EXPORTER_OTLP_PROTOCOL:-grpc}
-      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-jaeger:4317}
-      - OTEL_SERVICE_NAME=${OTEL_SERVICE_NAME:-lightning-service}
+      - REDIS_HOST=redis
+      - DB_PATH=/data/lightning.db
+    env_file:
+      - .env
     volumes:
       - lightning-data:/data
     depends_on:
@@ -214,19 +150,11 @@ services:
         NEXT_PUBLIC_BACKEND_WS_URL: ws://localhost:3001/ws
     container_name: smartmeter
     ports:
-      - "3001:8080"
+      - "3001:8080" # UI
     environment:
-      - PORT=8080
-      - DEVICE_ID=${SMART_METER_DEVICE_ID:-smart-meter-001}
-      - MQTT_BROKER=${MQTT_BROKER:-mosquitto}
-      - MQTT_PORT=${MQTT_PORT:-1883}
-      - MQTT_TLS_PORT=${MQTT_TLS_PORT:-8883}
-      - MQTT_USE_TLS=${MQTT_USE_TLS:-true}
-      - MQTT_TLS_SKIP_VERIFY=${MQTT_TLS_SKIP_VERIFY:-false}
-      - MQTT_TLS_SERVER_NAME=${MQTT_TLS_SERVER_NAME:-mosquitto}
-      - MQTT_TLS_CA_CERT=${MQTT_TLS_CA_CERT:-/certs/ca.crt}
-      - MQTT_USERNAME=${SMART_METER_MQTT_USERNAME:-smart-meter-001}
-      - MQTT_PASSWORD=${SMART_METER_MQTT_PASSWORD:-smart-meter-001_password}
+      - MQTT_BROKER=mosquitto
+    env_file:
+      - .env
     volumes:
       - ./mosquitto/certs:/certs:ro
     depends_on:    
