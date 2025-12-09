@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import type { InvoiceResponse } from "@/lib/types"
 import { QrCode, Copy, Check, X, Zap } from "lucide-react"
-import { useState } from "react"
+import { useClipboard } from "@/hooks/use-clipboard"
 import QRCode from "react-qr-code"
 
 interface QRPaymentProps {
@@ -14,14 +14,12 @@ interface QRPaymentProps {
 }
 
 export function QRPayment({ invoice, onSimulatePayment, onClose }: QRPaymentProps) {
-  const [copied, setCopied] = useState(false)
+  const { copied, copyToClipboard } = useClipboard()
 
   if (!invoice) return null
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(invoice.bolt11)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const handleCopy = () => {
+    copyToClipboard(invoice.bolt11)
   }
 
   const amountSats = Math.floor(invoice.amount_msat / 1000)
@@ -61,7 +59,7 @@ export function QRPayment({ invoice, onSimulatePayment, onClose }: QRPaymentProp
             variant="outline"
             size="sm"
             className="w-full font-mono text-xs bg-transparent"
-            onClick={copyToClipboard}
+            onClick={handleCopy}
           >
             {copied ? (
               <>
