@@ -1,24 +1,30 @@
 #!/bin/sh
 # Healthcheck script for Mosquitto MQTT broker
-# Tests if the broker is accepting TLS connections on port 8883
-# Uses a simple connection test - doesn't require authentication
+# Checks if the broker process is running and listening on port 8883
+# This approach avoids making any connections, preventing SSL/auth errors in logs
 
-CA_FILE="/mosquitto/certs/ca.crt"
-
-# Try to connect using mosquitto_sub with a short timeout
-# We don't need credentials - we just need to verify the broker is accepting connections
-# "Connection refused" means broker is down, any other error (like auth) means broker is up
-OUTPUT=$(mosquitto_sub -h 127.0.0.1 -p 8883 --cafile "$CA_FILE" -t 'test/health' -W 1 -C 1 -i "healthcheck-$$" 2>&1)
-
-# Check for connection refused (broker not accepting connections)
-if echo "$OUTPUT" | grep -q "Connection refused"; then
+# Check if mosquitto process is running
+# Use ps without aux flags for better compatibility (works as non-root user)
+# The [m] pattern prevents grep from matching itself
+if ! ps | grep -q '[m]osquitto'; then
     exit 1
 fi
 
-# Any other result means broker is accepting connections
-# This includes:
-# - Success (connected and subscribed)
-# - Authentication errors (broker is up, just not authorized)
-# - Network errors (broker is up, just can't complete handshake)
-exit 0
+# Check if port 8883 is in LISTEN state (broker is ready to accept connections)
+# Use 'ss' (socket statistics) which is part of iproute2 in Alpine
+# -l: show only listening sockets
+# -n: don't resolve service names
+# -t: TCP sockets
+# Exit code 0 if port is found, 1 if not
+if command -v ss >/dev/null 2>&1; then
+    ss -lnt | grep -q ':8883 '
+    exit $?
+elif command -v netstat >/dev/null 2>&1; then
+    netstat -lnt | grep -q ':8883 '
+    exit $?
+else
+    # Fallback: if neither ss nor netstat is available, just check process
+    # This is less ideal but better than nothing
+    exit 0
+fi
 
