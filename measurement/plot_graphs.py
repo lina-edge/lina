@@ -1,14 +1,33 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 import seaborn as sns
-import sys
 import os
 
 # --- CONFIGURATION ---
 INPUT_FILE = 'docker_stats.csv'
 OUTPUT_DIR = 'graphs'  # Folder to save images
 sns.set_theme(style="whitegrid") # Academic/Clean style
+
+def parse_elapsed_time(time_str):
+    """Parse MM:SS format to total seconds."""
+    try:
+        parts = time_str.split(':')
+        if len(parts) == 2:
+            minutes, seconds = int(parts[0]), int(parts[1])
+            return minutes * 60 + seconds
+        elif len(parts) == 3:
+            # Handle HH:MM:SS format if needed
+            hours, minutes, seconds = int(parts[0]), int(parts[1]), int(parts[2])
+            return hours * 3600 + minutes * 60 + seconds
+    except:
+        pass
+    return 0
+
+def format_elapsed_time(seconds):
+    """Format seconds as MM:SS for display."""
+    minutes = int(seconds // 60)
+    secs = int(seconds % 60)
+    return f"{minutes}:{secs:02d}"
 
 def generate_graphs():
     if not os.path.exists(INPUT_FILE):
@@ -26,9 +45,8 @@ def generate_graphs():
         print("CSV is empty. Run the monitor first.")
         return
 
-    # Convert timestamp column to datetime objects
-    # We attach the current date to the time so matplotlib can calculate spacing
-    df['timestamp'] = pd.to_datetime(df['timestamp'], format='%H:%M:%S')
+    # Convert timestamp column (MM:SS format) to elapsed seconds
+    df['elapsed_seconds'] = df['timestamp'].apply(parse_elapsed_time)
 
     # Get unique containers
     containers = df['container'].unique()
@@ -42,21 +60,41 @@ def generate_graphs():
             subset = df[df['container'] == container]
             
             # Optional: Add .rolling(3).mean() if data is too jittery
-            plt.plot(subset['timestamp'], subset[metric_col], label=container, linewidth=1.5, alpha=0.9)
+            plt.plot(subset['elapsed_seconds'], subset[metric_col], label=container, linewidth=1.5, alpha=0.9)
         
         # Styling
         plt.title(title, fontsize=16, fontweight='bold', pad=20)
         plt.ylabel(ylabel, fontsize=12, fontweight='bold')
-        plt.xlabel('Time', fontsize=12, fontweight='bold')
+        plt.xlabel('Elapsed Time (minutes:seconds)', fontsize=12, fontweight='bold')
         
-        # X-Axis formatting (Hour:Minute:Second)
+        # X-Axis formatting (elapsed time as M:SS or MM:SS)
         ax = plt.gca()
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
-        plt.xticks(rotation=45)
+        
+        # Get the range of elapsed seconds
+        min_seconds = df['elapsed_seconds'].min()
+        max_seconds = df['elapsed_seconds'].max()
+        
+        # Create tick positions (every 30 seconds or every minute depending on duration)
+        duration = max_seconds - min_seconds
+        if duration <= 60:
+            # Short duration: every 10 seconds
+            tick_interval = 10
+        elif duration <= 300:  # 5 minutes
+            # Medium duration: every 30 seconds
+            tick_interval = 30
+        else:
+            # Long duration: every minute
+            tick_interval = 60
+        
+        tick_positions = list(range(int(min_seconds), int(max_seconds) + 1, tick_interval))
+        tick_labels = [format_elapsed_time(sec) for sec in tick_positions]
+        
+        ax.set_xticks(tick_positions)
+        ax.set_xticklabels(tick_labels, rotation=45)
         
         # Grid and Limits
         plt.grid(True, linestyle='--', alpha=0.7)
-        plt.xlim(df['timestamp'].min(), df['timestamp'].max())
+        plt.xlim(df['elapsed_seconds'].min(), df['elapsed_seconds'].max())
         
         # Move legend outside to prevent blocking data
         plt.legend(bbox_to_anchor=(1.02, 1), loc='upper left', borderaxespad=0, title="Containers")
