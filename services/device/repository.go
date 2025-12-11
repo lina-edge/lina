@@ -30,8 +30,10 @@ type DeviceRepository struct {
 }
 
 // NewDeviceRepository creates and initializes the SQLite database
-func NewDeviceRepository(ctx context.Context, dbPath string) (*DeviceRepository, error) {
-	db, err := sql.Open("sqlite", dbPath)
+func NewDeviceRepository(ctx context.Context, dbPath string, busyTimeoutMS int) (*DeviceRepository, error) {
+	// WAL + busy_timeout for concurrent writers on edge devices.
+	dsn := fmt.Sprintf("%s?_pragma=busy_timeout(%d)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)", dbPath, busyTimeoutMS)
+	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to SQLite: %w", err)
 	}

@@ -6,7 +6,8 @@ import (
 
 type Config struct {
 	// Database
-	DBPath string
+	DBPath        string
+	BusyTimeoutMS int
 
 	// API
 	APIAddr string
@@ -50,7 +51,8 @@ type Config struct {
 func LoadConfig() Config {
 	return Config{
 		// Database
-		DBPath: internal.GetEnv("DB_PATH", "devices.db"),
+		DBPath:        internal.GetEnv("DB_PATH", "devices.db"),
+		BusyTimeoutMS: internal.IntEnv("BUSY_TIMEOUT_MS", 5000),
 
 		// API
 		APIAddr: internal.GetEnv("API_ADDR", ":8080"),

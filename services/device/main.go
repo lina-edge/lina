@@ -128,7 +128,7 @@ func main() {
 	defer serviceCancel()
 
 	// Initialize device repository
-	repo, err := NewDeviceRepository(ctx, cfg.DBPath)
+	repo, err := NewDeviceRepository(ctx, cfg.DBPath, cfg.BusyTimeoutMS)
 	if err != nil {
 		logger.Fatal(ctx, "Failed to initialize device repository", err)
 	}
