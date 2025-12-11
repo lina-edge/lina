@@ -106,7 +106,7 @@ services:
     image: 7robertodantas/lnpay-consumption:latest
     container_name: consumption
     environment:
-      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_HOST=redis
       - DB_PATH=/data/consumption.db
       # Disable OpenTelemetry
       - OTEL_EXPORTER_OTLP_ENDPOINT=

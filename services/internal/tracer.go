@@ -13,7 +13,6 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
-	"go.opentelemetry.io/otel/trace/noop"
 )
 
 // TracerConfig holds configuration for initializing OpenTelemetry tracer
@@ -31,11 +30,6 @@ func InitTracer(cfg TracerConfig) (func(context.Context) error, error) {
 
 	// Check if tracing is explicitly disabled via OTEL_TRACES_EXPORTER=none
 	otelTracesExporter := strings.ToLower(strings.TrimSpace(os.Getenv("OTEL_TRACES_EXPORTER")))
-	if otelTracesExporter == "none" {
-		// Return a no-op shutdown function that does nothing
-		logger.Info(ctx, "Tracing is explicitly disabled via OTEL_TRACES_EXPORTER=none")
-		return func(context.Context) error { return nil }, nil
-	}
 
 	// Create resource with service name
 	res, err := resource.New(ctx,
@@ -51,9 +45,13 @@ func InitTracer(cfg TracerConfig) (func(context.Context) error, error) {
 
 	// If endpoint is empty, create TracerProvider without span processors (noop)
 	// This creates traces but doesn't export them, while keeping propagation active
-	if cfg.ExporterOTLPEndpoint == "" {
-		tp = noop.NewTracerProvider()
+	if cfg.ExporterOTLPEndpoint == "" || otelTracesExporter == "none" {
+		logger.Info(ctx, "Tracing is explicitly disabled via OTEL_TRACES_EXPORTER=none")
+		tp = sdktrace.NewTracerProvider(
+			sdktrace.WithResource(res),
+		)
 	} else {
+		logger.Info(ctx, "Tracing is enabled via OTEL_EXPORTER_OTLP_ENDPOINT="+cfg.ExporterOTLPEndpoint)
 		// Create OTLP exporter
 		exporter, err := otlptracegrpc.New(ctx,
 			otlptracegrpc.WithEndpoint(cfg.ExporterOTLPEndpoint),
