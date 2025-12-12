@@ -4,9 +4,13 @@ import { randomString } from 'https://jslib.k6.io/k6-utils/1.2.0/index.js';
 import { sleep } from 'k6';
 
 // --- Metrics ---
-const httpRequestSuccess = new Counter('http_request_success');
-const httpRequestFailure = new Counter('http_request_failure');
-const httpRequestRate = new Rate('http_request_rate');
+// Domain-specific metrics for device load testing
+const usageReported = new Counter('usage_reported'); // Successful usage reports sent
+const usageReportFailed = new Counter('usage_report_failed'); // Failed usage reports
+const usageReportRate = new Rate('usage_report_rate'); // Rate of usage reports (successful)
+const devicePaused = new Counter('device_paused'); // Times device was paused (STOP/PAUSE command)
+const deviceConnected = new Counter('device_connected'); // Successful device connections
+const deviceConnectionFailed = new Counter('device_connection_failed'); // Failed device connections
 
 // --- Configuration ---
 export const options = {
@@ -35,7 +39,6 @@ export const options = {
 const API_BASE_URL = __ENV.API_BASE_URL || 'http://localhost:8080';
 const API_DEVICES_BATCH_ENDPOINT = __ENV.API_DEVICES_BATCH_ENDPOINT || '/devices/batch';
 const BRIDGE_BASE_URL = __ENV.BRIDGE_BASE_URL || 'http://localhost:3000';
-const MQTT_BROKER = __ENV.MQTT_BROKER || 'ssl://localhost:8883';
 const USAGE_REPORT_INTERVAL = parseInt(__ENV.USAGE_REPORT_INTERVAL || '1'); // seconds between reports
 const UNIT_PRICE_MSAT = parseInt(__ENV.UNIT_PRICE_MSAT || '100');
 const AUTHORIZE_REQUEST_MSAT = parseInt(__ENV.AUTHORIZE_REQUEST_MSAT || '10000');
@@ -57,7 +60,7 @@ function getISOTimestamp() {
 
 // --- Setup ---
 export function setup() {
-  console.log(`Starting load test setup: pre-registering and connecting ${MAX_VUS} devices...`);
+  console.log(`Starting load test setup: pre-registering ${MAX_VUS} devices...`);
 
   // Step 1: Register all devices using batch endpoint
   const batchPayload = JSON.stringify({
@@ -96,56 +99,15 @@ export function setup() {
       skipped: 0,
       failed: MAX_VUS,
       total: MAX_VUS,
-      connected: 0,
-      deviceIDs: [],
     };
   }
 
-  // Step 2: Connect all devices to the bridge (initialize: invoice + authorization)
-  console.log(`Connecting ${MAX_VUS} devices to bridge...`);
-  const deviceIDs = [];
-  let connected = 0;
-  let failed = 0;
-
-  // Connect devices sequentially (each connection waits for invoice + authorization)
-  for (let id = 1; id <= MAX_VUS; id++) {
-    const deviceID = `k6_device_${String(id).padStart(6, '0')}`;
-    const deviceSecret = `${deviceID}_password`;
-    deviceIDs.push(deviceID);
-
-    const payload = JSON.stringify({
-      broker: MQTT_BROKER,
-      secret: deviceSecret,
-    });
-
-    const res = http.post(
-      `${BRIDGE_BASE_URL}/devices/${deviceID}/connect`,
-      payload,
-      {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: '120s', // Allow time for invoice + authorization
-      }
-    );
-
-    if (res.status === 200) {
-      connected++;
-      if (connected % 10 === 0 || connected === MAX_VUS) {
-        console.log(`Connected ${connected}/${MAX_VUS} devices...`);
-      }
-    } else {
-      failed++;
-      console.error(`Failed to connect ${deviceID}: ${res.status} - ${res.body}`);
-    }
-  }
-
-  console.log(`Setup complete: ${registered} registered, ${connected} connected, ${failed} failed`);
+  console.log(`Setup complete: ${registered} devices registered`);
   return {
     registered,
     skipped: 0,
-    failed,
+    failed: 0,
     total: MAX_VUS,
-    connected,
-    deviceIDs,
   };
 }
 
@@ -153,18 +115,37 @@ export function setup() {
 export default function () {
   const vuID = __VU;
   const deviceID = generateDeviceID(vuID);
+  const deviceSecret = `${deviceID}_password`;
 
-  // Device should already be connected from setup
-  // Just send usage reports
+  // Connect device on first iteration only
+  if (__ITER === 0) {
+    console.log(`[VU ${vuID}] Connecting device ${deviceID}...`);
+    const connectPayload = JSON.stringify({
+      secret: deviceSecret,
+    });
 
-  // Simulate device sending usage reports with delays
+    const connectRes = http.post(
+      `${BRIDGE_BASE_URL}/devices/${deviceID}/connect`,
+      connectPayload,
+      {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: '120s', // Allow time for invoice + authorization
+      }
+    );
+
+    if (connectRes.status === 200) {
+      deviceConnected.add(1);
+      console.log(`[VU ${vuID}] Device ${deviceID} connected and initialized`);
+    } else {
+      deviceConnectionFailed.add(1);
+      console.error(`[VU ${vuID}] Failed to connect ${deviceID}: ${connectRes.status} - ${connectRes.body}`);
+      // Continue anyway - might retry on next iteration or fail gracefully
+    }
+  }
+
+  // k6 calls this function in a loop - each call sends one usage report
   // The bridge handles all the MQTT logic, authorization maintenance, etc.
-  // We just need to send usage reports via HTTP to the bridge
-  // This loop will run for the duration of the test scenario
 
-  let reportCount = 0;
-
-  // Keep sending reports until the test ends (k6 will stop calling this function when scenario ends)
   // Generate a random measurement between 0.1 and 1.0 kWh
   const measure = 0.1 + Math.random() * 0.9;
   const usagePayload = JSON.stringify({
@@ -184,23 +165,21 @@ export default function () {
   );
 
   if (usageRes.status === 200) {
-    httpRequestSuccess.add(1);
-    httpRequestRate.add(1);
-    reportCount++;
-    if (reportCount % 10 === 0) {
-      console.log(`[VU ${vuID}] Sent ${reportCount} usage reports`);
-    }
+    usageReported.add(1);
+    usageReportRate.add(1);
+  } else if (usageRes.status === 423) {
+    // 423 = Locked/Reporting disabled (STOP/PAUSE command received)
+    // Device is paused, not failed - k6 will continue calling this function
+    devicePaused.add(1);
   } else {
-    httpRequestFailure.add(1);
+    usageReportFailed.add(1);
     console.error(`[VU ${vuID}] Usage report failed: ${usageRes.status} - ${usageRes.body}`);
   }
 
-  // Sleep for the configured interval with jitter before sending next report
-  // Add random jitter (±20% of interval) to desynchronize devices and simulate realistic load
-  // This prevents all devices from reporting at exactly the same time
-  // const jitter = (Math.random() * 0.4 - 0.2) * USAGE_REPORT_INTERVAL; // ±20% jitter
-  // const sleepDuration = Math.max(0.1, USAGE_REPORT_INTERVAL + jitter); // Ensure minimum 0.1s
-  // sleep(sleepDuration);
+  // Sleep for a random interval between 0.1 and 1.0 seconds
+  // This creates realistic, desynchronized load patterns
+  const sleepDuration = 0.1 + Math.random() * 0.9; // Random between 0.1 and 1.0 seconds
+  sleep(sleepDuration);
 }
 
 // --- Teardown ---

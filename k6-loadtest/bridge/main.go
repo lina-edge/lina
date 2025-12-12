@@ -4,12 +4,23 @@ import (
 	"crypto/tls"
 	"fmt"
 	"log"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/gin-gonic/gin"
 )
+
+var mqttBroker = getEnv("MQTT_BROKER", "ssl://localhost:8883")
+
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
 
 // Store active connections
 type DeviceSession struct {
@@ -29,7 +40,7 @@ func main() {
 	// Use a single wildcard route and dispatch based on the action
 	r.POST("/devices/:deviceId/*action", handleDeviceRoute)
 
-	fmt.Println("MQTT Proxy running on :3000")
+	fmt.Printf("MQTT Proxy running on :3000 (broker: %s)\n", mqttBroker)
 	log.Fatal(r.Run(":3000"))
 }
 
@@ -59,7 +70,6 @@ func handleConnect(c *gin.Context) {
 	}
 
 	var req struct {
-		Broker string `json:"broker" binding:"required"`
 		Secret string `json:"secret" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -68,7 +78,7 @@ func handleConnect(c *gin.Context) {
 	}
 
 	opts := mqtt.NewClientOptions()
-	opts.AddBroker(req.Broker)
+	opts.AddBroker(mqttBroker)
 	opts.SetClientID(deviceID)
 	opts.SetUsername(deviceID)
 	opts.SetPassword(req.Secret)
@@ -181,8 +191,20 @@ func handleDevicePublish(c *gin.Context) {
 		return
 	}
 
-	// Ensure authorization is active before publishing usage reports
+	// Check if reporting is enabled (for usage reports)
 	if session.DeviceCtx != nil {
+		// For usage reports, check if reporting is enabled
+		if strings.Contains(topic, "/usage") {
+			session.DeviceCtx.mu.RLock()
+			reportingEnabled := session.DeviceCtx.ReportingEnabled
+			session.DeviceCtx.mu.RUnlock()
+
+			if !reportingEnabled {
+				c.JSON(423, gin.H{"error": "reporting disabled (STOP/PAUSE command received)"})
+				return
+			}
+		}
+		// Ensure authorization is active before publishing usage reports
 		session.DeviceCtx.EnsureAuthorizationActive()
 	}
 

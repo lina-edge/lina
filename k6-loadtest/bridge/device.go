@@ -29,6 +29,7 @@ type DeviceContext struct {
 	PendingAuthorization   bool
 	PendingInvoice         bool
 	Initialized            bool
+	ReportingEnabled       bool // Controls whether usage reports should be sent
 	InitComplete           chan bool
 
 	// Configuration
@@ -49,6 +50,7 @@ func NewDeviceContext(deviceID, secret string, client mqtt.Client) *DeviceContex
 		AuthorizeRequestMsat:     10000,  // Default 10k msat
 		InvoiceAmountMsat:        250000, // Default 250k msat
 		InitComplete:             make(chan bool, 1),
+		ReportingEnabled:         true,                              // Start with reporting enabled
 		LastInvoiceRequest:       time.Now().Add(-10 * time.Minute), // Allow immediate request
 		LastAuthorizationRequest: time.Now().Add(-10 * time.Minute),
 	}
@@ -458,14 +460,18 @@ func (d *DeviceContext) handleControlMessage(payload []byte) {
 	switch msg.Command {
 	case mqttmodel.ControlCommand_CONTROL_COMMAND_STOP,
 		mqttmodel.ControlCommand_CONTROL_COMMAND_PAUSE:
-		// Device should stop reporting, but we don't need to do anything
-		// as the k6 test controls when to send reports
-		log.Printf("[%s] Received STOP/PAUSE command", d.DeviceID)
+		d.mu.Lock()
+		d.ReportingEnabled = false
+		d.mu.Unlock()
+		log.Printf("[%s] Received STOP/PAUSE command - reporting disabled", d.DeviceID)
 
 	case mqttmodel.ControlCommand_CONTROL_COMMAND_RESUME:
+		d.mu.Lock()
+		d.ReportingEnabled = true
+		d.mu.Unlock()
 		// Ensure authorization is active when resuming
 		d.EnsureAuthorizationActive()
-		log.Printf("[%s] Received RESUME command", d.DeviceID)
+		log.Printf("[%s] Received RESUME command - reporting enabled", d.DeviceID)
 
 	case mqttmodel.ControlCommand_CONTROL_COMMAND_AUTHORIZATION:
 		reason := msg.Reason
