@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -28,9 +27,7 @@ func TestStreamHandlerPublishesLedgerEvents(t *testing.T) {
 		_ = container.Terminate(ctx)
 	}()
 
-	repo := newTempRepo(t)
-
-	streamClient, err := internal.NewStreamClient(internal.StreamConfig{
+	streamClient, err := internal.NewStreamClient(ctx, internal.StreamConfig{
 		Host: host,
 		Port: port,
 		DB:   0,
@@ -40,13 +37,13 @@ func TestStreamHandlerPublishesLedgerEvents(t *testing.T) {
 
 	require.NoError(t, streamClient.Client().FlushAll(ctx).Err())
 
-	handler := NewStreamHandler(streamClient, repo)
+	publisher := NewEastWestStreamPublisher(streamClient)
 
 	ts := time.Now().UTC().Format(time.RFC3339)
-	err = handler.PublishDeviceCredited(ctx, "device-stream-1", 1_000, 1_000, ts)
+	err = publisher.PublishDeviceCredited(ctx, "device-stream-1", 1_000, 1_000, ts)
 	require.NoError(t, err)
 
-	err = handler.PublishDeviceDebited(ctx, "device-stream-1", "auth-123", 250, 750, ts)
+	err = publisher.PublishDeviceDebited(ctx, "device-stream-1", "auth-123", 250, 750, ts)
 	require.NoError(t, err)
 
 	entries := readStreamEntries(t, streamClient.Client(), ctx, "event.ledger")
@@ -80,15 +77,6 @@ func startRedisContainer(t *testing.T, ctx context.Context) (testcontainers.Cont
 	require.NoError(t, err)
 
 	return container, host, mappedPort.Port()
-}
-
-func newTempRepo(t *testing.T) *LedgerRepository {
-	t.Helper()
-	dbPath := filepath.Join(t.TempDir(), "ledger-integration.db")
-	repo, err := NewLedgerRepository(dbPath, 1000)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = repo.Close() })
-	return repo
 }
 
 func readStreamEntries(t *testing.T, client *redis.Client, ctx context.Context, stream string) []redis.XMessage {

@@ -17,24 +17,24 @@ import (
 
 // NorthboundInterface handles REST API endpoints
 type NorthboundInterface struct {
-	router        *gin.Engine
-	repo          *LedgerRepository
-	streamHandler *StreamHandler
-	cfg           Config
-	server        *http.Server
+	router   *gin.Engine
+	repo     *LedgerRepository
+	publisher *EastWestStreamPublisher
+	cfg      Config
+	server   *http.Server
 }
 
 // NewNorthboundInterface creates a new northbound interface
-func NewNorthboundInterface(repo *LedgerRepository, cfg Config, streamHandler *StreamHandler) *NorthboundInterface {
+func NewNorthboundInterface(repo *LedgerRepository, cfg Config, publisher *EastWestStreamPublisher) *NorthboundInterface {
 	router := gin.Default()
 
 	router.Use(otelgin.Middleware("ledger-service"))
 
 	nb := &NorthboundInterface{
-		router:        router,
-		repo:          repo,
-		streamHandler: streamHandler,
-		cfg:           cfg,
+		router:    router,
+		repo:      repo,
+		publisher: publisher,
+		cfg:       cfg,
 	}
 
 	// Register routes
@@ -273,9 +273,9 @@ func (nb *NorthboundInterface) postDeviceCredit(c *gin.Context) {
 	}
 
 	// Emit DeviceCreditedEvent to event.ledger
-	if nb.streamHandler != nil {
+	if nb.publisher != nil {
 		timestamp := time.Unix(out.CreatedAt, 0).UTC().Format(time.RFC3339)
-		if err := nb.streamHandler.PublishDeviceCredited(c, out.DeviceID, out.AmountMsat, out.BalanceAfter, timestamp); err != nil {
+		if err := nb.publisher.PublishDeviceCredited(c, out.DeviceID, out.AmountMsat, out.BalanceAfter, timestamp); err != nil {
 			logger.WithDeviceID(out.DeviceID).
 				WithStream("event.ledger", "produce").
 				Error(c, "Failed to publish DeviceCreditedEvent via northbound REST", err)
@@ -345,9 +345,9 @@ func (nb *NorthboundInterface) postDeviceDebit(c *gin.Context) {
 	}
 
 	// Emit DeviceDebitedEvent to event.ledger
-	if nb.streamHandler != nil {
+	if nb.publisher != nil {
 		timestamp := time.Unix(out.CreatedAt, 0).UTC().Format(time.RFC3339)
-		if err := nb.streamHandler.PublishDeviceDebited(
+		if err := nb.publisher.PublishDeviceDebited(
 			c,
 			out.DeviceID,
 			debitReq.CorrelationID,
@@ -371,7 +371,7 @@ func (nb *NorthboundInterface) Start(ctx context.Context, addr string) error {
 		Handler: nb.router,
 	}
 
-	logger.Infof(nil, "Starting northbound REST API server on %s", addr)
+	logger.Infof(context.Background(), "Starting northbound REST API server on %s", addr)
 	return nb.server.ListenAndServe()
 }
 

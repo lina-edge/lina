@@ -121,8 +121,18 @@ func main() {
 	defer streamClient.Close()
 	logger.Info(ctx, "Redis stream client connected successfully")
 
-	// Create stream handler
-	streamHandler := NewStreamHandler(streamClient, repo)
+	// Create publisher
+	publisher := NewEastWestStreamPublisher(streamClient)
+
+	// Create handler
+	handler := NewEastWestStreamHandler(repo, publisher)
+
+	// Create stream interface
+	streamInterface, err := NewEastWestStreamInterface(ctx, handler)
+	if err != nil {
+		logger.Fatal(ctx, "Failed to create stream interface", err)
+	}
+	defer streamInterface.Close()
 
 	// Create context for graceful shutdown
 	serviceCtx, cancel := context.WithCancel(ctx)
@@ -130,7 +140,7 @@ func main() {
 
 	// Start consumption consumer in a goroutine
 	go func() {
-		if err := streamHandler.StartConsumptionConsumer(serviceCtx); err != nil && err != context.Canceled {
+		if err := streamInterface.StartConsumptionConsumer(serviceCtx); err != nil && err != context.Canceled {
 			logger.WithStream("event.consumption", "consume").
 				Error(serviceCtx, "Consumption consumer error", err)
 		}
@@ -138,7 +148,7 @@ func main() {
 
 	// Start lightning consumer in a goroutine
 	go func() {
-		if err := streamHandler.StartLightningConsumer(serviceCtx); err != nil && err != context.Canceled {
+		if err := streamInterface.StartLightningConsumer(serviceCtx); err != nil && err != context.Canceled {
 			logger.WithStream("event.lightning", "consume").
 				Error(serviceCtx, "Lightning consumer error", err)
 		}
@@ -146,7 +156,7 @@ func main() {
 
 	// Start expiration checker in a goroutine
 	go func() {
-		if err := streamHandler.StartExpirationChecker(serviceCtx); err != nil && err != context.Canceled {
+		if err := streamInterface.StartExpirationChecker(serviceCtx, repo, publisher); err != nil && err != context.Canceled {
 			logger.Error(serviceCtx, "Expiration checker error", err)
 		}
 	}()
@@ -161,7 +171,7 @@ func main() {
 		grpcServer := grpc.NewServer(
 			grpc.StatsHandler(otelgrpc.NewServerHandler()),
 		)
-		eastWestServer := NewEastWestServer(repo, streamHandler)
+		eastWestServer := NewEastWestServer(repo, publisher)
 		ledgerpb.RegisterLedgerServiceServer(grpcServer, eastWestServer)
 
 		logger.Infof(ctx, "gRPC server listening on %s via eastwest gRPC", cfg.GRPCAddr)
@@ -172,7 +182,7 @@ func main() {
 
 	// Initialize and start northbound REST API
 	logger.Info(ctx, "Initializing northbound REST API")
-	northbound := NewNorthboundInterface(repo, cfg, streamHandler)
+	northbound := NewNorthboundInterface(repo, cfg, publisher)
 
 	// Start northbound server in a goroutine
 	go func() {

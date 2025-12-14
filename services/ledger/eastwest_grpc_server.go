@@ -17,15 +17,15 @@ import (
 // EastWestServer implements the LedgerService gRPC server
 type EastWestServer struct {
 	ledgerpb.UnimplementedLedgerServiceServer
-	repo          *LedgerRepository
-	streamHandler *StreamHandler
+	repo      *LedgerRepository
+	publisher *EastWestStreamPublisher
 }
 
 // NewEastWestServer creates a new east-west gRPC server
-func NewEastWestServer(repo *LedgerRepository, streamHandler *StreamHandler) *EastWestServer {
+func NewEastWestServer(repo *LedgerRepository, publisher *EastWestStreamPublisher) *EastWestServer {
 	return &EastWestServer{
-		repo:          repo,
-		streamHandler: streamHandler,
+		repo:      repo,
+		publisher: publisher,
 	}
 }
 
@@ -161,9 +161,9 @@ func (s *EastWestServer) CreateOrGetAuthorization(ctx context.Context, req *ledg
 	}
 
 	// Emit DeviceDebited event for the authorization hold
-	if s.streamHandler != nil {
+	if s.publisher != nil {
 		timestamp := time.Unix(entry.CreatedAt, 0).UTC().Format(time.RFC3339)
-		if err := s.streamHandler.PublishDeviceDebited(ctx, req.DeviceId, authID, entry.AmountMsat, entry.BalanceAfter, timestamp); err != nil {
+		if err := s.publisher.PublishDeviceDebited(ctx, req.DeviceId, authID, entry.AmountMsat, entry.BalanceAfter, timestamp); err != nil {
 			logger.WithDeviceID(req.DeviceId).
 				WithStream("event.ledger", "produce").
 				Errorf(ctx, "Failed to publish DeviceDebitedEvent for authorization %s via eastwest gRPC: %v", authID, err)
@@ -181,8 +181,8 @@ func (s *EastWestServer) CreateOrGetAuthorization(ctx context.Context, req *ledg
 	}
 
 	// Publish AuthorizationCreated event
-	if s.streamHandler != nil {
-		if err := s.streamHandler.PublishAuthorizationCreated(ctx, auth); err != nil {
+	if s.publisher != nil {
+		if err := s.publisher.PublishAuthorizationCreated(ctx, auth); err != nil {
 			// Log error but don't fail the request
 			// TODO: consider adding retry logic or dead letter queue
 		}
