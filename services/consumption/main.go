@@ -46,15 +46,21 @@ func main() {
 
 	// Connect to Redis stream
 	logger.Info(ctx, "Connecting to Redis")
-	streamClient, err := internal.NewStreamClientFromEnv(ctx)
+	streamInterface, err := NewEastWestStreamInterface(ctx, cfg, repository)
 	if err != nil {
 		logger.Fatal(ctx, "Failed to create Redis stream client", err)
 	}
-	defer streamClient.Close()
+	defer streamInterface.Close()
 	logger.Info(ctx, "Redis stream client connected successfully")
 
-	// Create stream handler
-	streamHandler := NewStreamHandler(streamClient, cfg, repository)
+	// Create outbox trigger channel
+	outboxTrigger := make(chan string, 100)
+
+	// Create publisher
+	publisher := NewEastWestStreamPublisher(streamInterface, repository, outboxTrigger)
+
+	// Create handler
+	handler := NewEastWestStreamHandler(repository, publisher)
 
 	// Create northbound interface
 	// Initialize and start northbound REST API
@@ -74,7 +80,7 @@ func main() {
 
 	// Start device event consumer (consumes from event.device stream)
 	go func() {
-		if err := streamHandler.StartDeviceConsumer(serviceCtx); err != nil && err != context.Canceled {
+		if err := streamInterface.StartDeviceConsumer(serviceCtx, handler); err != nil && err != context.Canceled {
 			logger.WithStream("event.device", "consume").
 				Error(serviceCtx, "Device consumer error", err)
 		}
@@ -82,7 +88,7 @@ func main() {
 
 	// Start outbox publisher (publishes to event.consumption stream)
 	go func() {
-		if err := streamHandler.StartOutboxPublisher(serviceCtx); err != nil && err != context.Canceled {
+		if err := publisher.StartOutboxPublisher(serviceCtx); err != nil && err != context.Canceled {
 			logger.WithStream("event.consumption", "produce").
 				Error(serviceCtx, "Outbox publisher error", err)
 		}
@@ -90,7 +96,7 @@ func main() {
 
 	// Start outbox cleanup (removes old published records after retention period)
 	go func() {
-		if err := streamHandler.StartOutboxCleanup(serviceCtx); err != nil && err != context.Canceled {
+		if err := publisher.StartOutboxCleanup(serviceCtx); err != nil && err != context.Canceled {
 			logger.Error(serviceCtx, "Outbox cleanup error", err)
 		}
 	}()
