@@ -269,22 +269,34 @@ func (di *DeviceInterface) Connect(deviceID, deviceSecret string) {
 	di.callbacks.OnMQTTStatus("connecting")
 	di.callbacks.OnLog("Connecting to MQTT broker...", "info")
 
-	if token := di.mqttClient.Connect(); token.Wait() && token.Error() != nil {
-		err := token.Error()
-		errMsg := err.Error()
-		di.setMQTTStatus("error")
-		di.callbacks.OnMQTTStatus("error")
-		di.callbacks.OnLog("MQTT connection failed: "+errMsg, "error")
-		// Set device status back to OFFLINE when connection fails
-		di.setDeviceStatus("OFFLINE")
-		di.callbacks.OnDeviceStatus("OFFLINE")
-		if isMQTTAuthError(errMsg) {
-			di.callbacks.OnLog("MQTT credentials rejected: shutting down", "error")
-			// Call shutdown if callback supports it
-			if shutdownCallback, ok := di.callbacks.(interface{ Shutdown() }); ok {
-				shutdownCallback.Shutdown()
+	// Use WaitTimeout to avoid blocking indefinitely (15 second timeout for connection)
+	token := di.mqttClient.Connect()
+	if token.WaitTimeout(15 * time.Second) {
+		if token.Error() != nil {
+			err := token.Error()
+			errMsg := err.Error()
+			di.setMQTTStatus("error")
+			di.callbacks.OnMQTTStatus("error")
+			di.callbacks.OnLog("MQTT connection failed: "+errMsg, "error")
+			// Set device status back to OFFLINE when connection fails
+			di.setDeviceStatus("OFFLINE")
+			di.callbacks.OnDeviceStatus("OFFLINE")
+			if isMQTTAuthError(errMsg) {
+				di.callbacks.OnLog("MQTT credentials rejected: shutting down", "error")
+				// Call shutdown if callback supports it
+				if shutdownCallback, ok := di.callbacks.(interface{ Shutdown() }); ok {
+					shutdownCallback.Shutdown()
+				}
 			}
 		}
+		// If no error, connection succeeded - OnConnectHandler will be called
+	} else {
+		// Timeout occurred
+		di.setMQTTStatus("error")
+		di.callbacks.OnMQTTStatus("error")
+		di.callbacks.OnLog("MQTT connection timeout after 15 seconds", "error")
+		di.setDeviceStatus("OFFLINE")
+		di.callbacks.OnDeviceStatus("OFFLINE")
 	}
 }
 
@@ -772,8 +784,15 @@ func (di *DeviceInterface) PublishHeartbeat(status mqttmodel.DeviceStatus) {
 	}
 	topic := "/devices/" + di.deviceID + "/heartbeat"
 
-	if token := di.mqttClient.Publish(topic, 1, false, payload); token.Wait() && token.Error() != nil {
-		di.callbacks.OnLog("Failed to publish heartbeat: "+token.Error().Error(), "error")
+	// Use WaitTimeout to avoid blocking indefinitely (2 second timeout for heartbeat)
+	token := di.mqttClient.Publish(topic, 1, false, payload)
+	if token.WaitTimeout(2 * time.Second) {
+		if token.Error() != nil {
+			di.callbacks.OnLog("Failed to publish heartbeat: "+token.Error().Error(), "error")
+		}
+	} else {
+		// Timeout occurred - log but don't fail (heartbeat is best-effort)
+		di.callbacks.OnLog("Heartbeat publish timeout (non-critical)", "warning")
 	}
 }
 
@@ -812,20 +831,30 @@ func (di *DeviceInterface) PublishAuthorizeRequest(reason string) {
 	}
 	topic := "/devices/" + di.deviceID + "/request/authorize"
 
-	if token := di.mqttClient.Publish(topic, 1, false, payload); token.Wait() && token.Error() != nil {
-		// Clear pending flag on error
+	// Use WaitTimeout to avoid blocking indefinitely (5 second timeout)
+	token := di.mqttClient.Publish(topic, 1, false, payload)
+	if token.WaitTimeout(5 * time.Second) {
+		if token.Error() != nil {
+			// Clear pending flag on error
+			di.pendingAuthMu.Lock()
+			di.pendingAuthorization = false
+			di.pendingAuthMu.Unlock()
+			di.callbacks.OnLog("Failed to publish authorize request ("+request.RequestId+"): "+token.Error().Error(), "error")
+		} else {
+			msg := fmt.Sprintf(
+				"Authorization requested (%s): %s msat for %s",
+				request.RequestId,
+				FormatMsat(request.RequestMsat),
+				reason,
+			)
+			di.callbacks.OnLog(msg, "info")
+		}
+	} else {
+		// Timeout occurred
 		di.pendingAuthMu.Lock()
 		di.pendingAuthorization = false
 		di.pendingAuthMu.Unlock()
-		di.callbacks.OnLog("Failed to publish authorize request ("+request.RequestId+"): "+token.Error().Error(), "error")
-	} else {
-		msg := fmt.Sprintf(
-			"Authorization requested (%s): %s msat for %s",
-			request.RequestId,
-			FormatMsat(request.RequestMsat),
-			reason,
-		)
-		di.callbacks.OnLog(msg, "info")
+		di.callbacks.OnLog("Failed to publish authorize request ("+request.RequestId+"): timeout waiting for MQTT publish", "error")
 	}
 }
 
@@ -904,16 +933,32 @@ func (di *DeviceInterface) PublishInvoiceRequest(requestID string, amountMsat in
 	}
 	topic := "/devices/" + di.deviceID + "/request/invoice"
 
-	if token := di.mqttClient.Publish(topic, 1, false, payload); token.Wait() && token.Error() != nil {
-		di.callbacks.OnLog("Failed to publish invoice request ("+requestID+"): "+token.Error().Error(), "error")
+	// Use WaitTimeout to avoid blocking indefinitely (5 second timeout)
+	token := di.mqttClient.Publish(topic, 1, false, payload)
+	if token.WaitTimeout(5 * time.Second) {
+		if token.Error() != nil {
+			di.callbacks.OnLog("Failed to publish invoice request ("+requestID+"): "+token.Error().Error(), "error")
+		} else {
+			msg := fmt.Sprintf(
+				"Invoice request sent (%s): %s msat for %s",
+				requestID,
+				FormatMsat(amountMsat),
+				reason,
+			)
+			di.callbacks.OnLog(msg, "info")
+		}
 	} else {
-		msg := fmt.Sprintf(
-			"Invoice request sent (%s): %s msat for %s",
-			requestID,
-			FormatMsat(amountMsat),
-			reason,
-		)
-		di.callbacks.OnLog(msg, "info")
+		// Timeout occurred
+		di.callbacks.OnLog("Failed to publish invoice request ("+requestID+"): timeout waiting for MQTT publish", "error")
+	}
+}
+
+// ClearInvoice clears the current invoice from the device context
+func (di *DeviceInterface) ClearInvoice() {
+	currentInvoice := di.ctx.getInvoice()
+	if currentInvoice != nil {
+		di.setInvoice(nil)
+		di.callbacks.OnLog("Invoice cleared", "info")
 	}
 }
 

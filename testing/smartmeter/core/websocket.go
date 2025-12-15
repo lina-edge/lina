@@ -78,15 +78,15 @@ func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Reques
 	// Send initial state
 	state := h.meter.GetState()
 	stateJSON := h.meter.GetStateJSON()
-	
+
 	// Parse JSON to verify appliances are included
 	var verifyState map[string]interface{}
 	if err := json.Unmarshal(stateJSON, &verifyState); err == nil {
 		if appliances, ok := verifyState["appliances"].([]interface{}); ok {
 			logger.InfoWithFields(ctx, "Sending initial state via northbound REST", map[string]interface{}{
-				"appliance_count": len(state.Appliances),
+				"appliance_count":         len(state.Appliances),
 				"appliance_count_in_json": len(appliances),
-				"device_status":   state.DeviceStatus,
+				"device_status":           state.DeviceStatus,
 			})
 		} else {
 			logger.WarnWithFields(ctx, "Appliances not found in JSON state", map[string]interface{}{
@@ -100,7 +100,7 @@ func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Reques
 			"device_status":   state.DeviceStatus,
 		})
 	}
-	
+
 	h.sendToClient(conn, WSMessage{
 		Type:    "state",
 		Payload: stateJSON,
@@ -139,33 +139,51 @@ func (h *WebSocketHandler) handleCommand(ctx context.Context, cmd WSCommand) {
 
 	switch cmd.Action {
 	case "start":
-		h.meter.Start()
+		// Execute in goroutine to avoid blocking websocket handler
+		go func() {
+			h.meter.Start()
+		}()
 
 	case "stop":
-		h.meter.Shutdown()
+		// Execute in goroutine to avoid blocking websocket handler
+		go func() {
+			h.meter.Shutdown()
+		}()
 
 	case "toggle_appliance":
 		var data struct {
 			ApplianceID string `json:"applianceId"`
 		}
-		if err := json.Unmarshal(cmd.Data, &data); err == nil {
-			h.meter.ToggleAppliance(data.ApplianceID)
+		if err := json.Unmarshal(cmd.Data, &data); err != nil {
+			logger.ErrorWithFields(ctx, "Error unmarshaling toggle_appliance data via northbound REST", err, map[string]interface{}{
+				"payload": string(cmd.Data),
+			})
+		} else if data.ApplianceID == "" {
+			logger.WarnWithFields(ctx, "Invalid appliance ID for toggle_appliance request via northbound REST", map[string]interface{}{
+				"applianceId": data.ApplianceID,
+			})
 		} else {
-			logger.Errorf(ctx, "Error unmarshaling toggle_appliance data via northbound REST: %v", err)
+			h.meter.ToggleAppliance(data.ApplianceID)
 		}
 
 	case "request_topup":
 		var data struct {
 			AmountMsat int64 `json:"amountMsat"`
 		}
-		if err := json.Unmarshal(cmd.Data, &data); err == nil {
-			h.meter.RequestTopUp(data.AmountMsat)
+		if err := json.Unmarshal(cmd.Data, &data); err != nil {
+			logger.ErrorWithFields(ctx, "Error unmarshaling request_topup data via northbound REST", err, map[string]interface{}{
+				"payload": string(cmd.Data),
+			})
+		} else if data.AmountMsat <= 0 {
+			logger.WarnWithFields(ctx, "Invalid amount for topup request via northbound REST", map[string]interface{}{
+				"amountMsat": data.AmountMsat,
+			})
+		} else {
+			// Execute in goroutine to avoid blocking websocket handler
+			go func(amount int64) {
+				h.meter.RequestTopUp(amount)
+			}(data.AmountMsat)
 		}
-
-	case "simulate_payment":
-		h.meter.Log("Payment simulation - waiting for backend to confirm", "info")
-		// In real implementation, payment would be detected by backend
-		// and balance update would come via MQTT balance message
 
 	case "clear_invoice":
 		h.meter.ClearInvoice()

@@ -313,9 +313,9 @@ func (m *SmartMeter) OnInvoiceCreated(invoice *InvoiceResponse) {
 }
 
 // ClearInvoice clears the current invoice
-// Note: This is called by SmartMeter internally, but DeviceInterface manages invoice state
-// For now, we'll let DeviceInterface handle invoice clearing via callbacks
+// DeviceInterface manages invoice state, so we delegate to it
 func (m *SmartMeter) ClearInvoice() {
+	m.device.ClearInvoice()
 	m.notifyStateChange()
 }
 
