@@ -250,9 +250,22 @@ func (h *WebSocketHandler) sendToClient(conn *websocket.Conn, msg WSMessage) {
 }
 
 // BroadcastState broadcasts the current state to all clients
+// Uses non-blocking send to prevent blocking if channel is full
 func (h *WebSocketHandler) BroadcastState() {
-	h.broadcast <- WSMessage{
+	ctx := context.Background()
+
+	msg := WSMessage{
 		Type:    "state",
 		Payload: h.meter.GetStateJSON(),
+	}
+
+	select {
+	case h.broadcast <- msg:
+		// Successfully queued
+	default:
+		// Channel is full, log warning but don't block
+		logger.WarnWithFields(ctx, "Broadcast channel full, dropping state update", map[string]interface{}{
+			"channel_capacity": cap(h.broadcast),
+		})
 	}
 }
