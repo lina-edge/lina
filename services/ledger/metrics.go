@@ -56,11 +56,35 @@ func initMetrics() error {
 		return err
 	}
 
-	// Create histogram for debit latency
+	// Create histogram for debit latency with explicit bucket boundaries
+	// Optimized for sub-second latencies (typical range: 0.001s - 1s) with higher buckets for outliers
+	// Buckets: 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0, +Inf
+	buckets := []float64{
+		0.001, // 1ms
+		0.002, // 2ms
+		0.005, // 5ms
+		0.01,  // 10ms
+		0.02,  // 20ms
+		0.05,  // 50ms
+		0.1,   // 100ms
+		0.2,   // 200ms
+		0.5,   // 500ms
+		1.0,   // 1s
+		2.0,   // 2s
+		5.0,   // 5s
+		10.0,  // 10s
+		30.0,  // 30s
+		60.0,  // 1m
+		120.0, // 2m
+		300.0, // 5m
+		600.0, // 10m
+		// +Inf is automatically added
+	}
 	debitLatencySeconds, err = meter.Float64Histogram(
 		"ledger_debit_latency_seconds",
 		metric.WithDescription("Latency of debit operations from usage in seconds"),
 		metric.WithUnit("s"),
+		metric.WithExplicitBucketBoundaries(buckets...),
 	)
 	if err != nil {
 		return err
