@@ -129,30 +129,7 @@ func handleConnect(c *gin.Context) {
 connected:
 
 	// DeviceInterface automatically requests authorization after connection
-
-	// Request initial invoice after connection (wait a bit for device to become ONLINE)
-	// Send invoice request asynchronously after a short delay to allow authorization to complete
-	go func() {
-		// Wait a bit for device to transition to ONLINE status after authorization
-		time.Sleep(500 * time.Millisecond)
-
-		deviceInterface := device.GetDeviceInterface()
-		if deviceInterface != nil && deviceInterface.IsConnected() {
-			// Check if device is ONLINE before requesting invoice
-			deviceState := deviceInterface.GetDeviceContext()
-			if deviceState.DeviceStatus == "ONLINE" {
-				requestID := devicepkg.GenerateID()
-				invoiceAmount := device.InvoiceAmountMsat
-				if invoiceAmount == 0 {
-					invoiceAmount = 250000 // Default 250k msat
-				}
-				deviceInterface.PublishInvoiceRequest(requestID, invoiceAmount, "STARTUP")
-				logger.WithDeviceID(deviceID).Infof(context.Background(), "Initial invoice request sent: %d msat", invoiceAmount)
-			} else {
-				logger.WithDeviceID(deviceID).Debugf(context.Background(), "Skipping initial invoice request - device status: %s", deviceState.DeviceStatus)
-			}
-		}
-	}()
+	// Invoice requests are handled through the normal flow (e.g., OnAuthorizationRejected callback)
 
 	// Store session
 	sessMux.Lock()
@@ -260,30 +237,7 @@ func handleBatchConnect(c *gin.Context) {
 			}
 
 			// DeviceInterface automatically requests authorization after connection
-
-			// Request initial invoice after connection (wait a bit for device to become ONLINE)
-			// Send invoice request asynchronously after a short delay to allow authorization to complete
-			go func() {
-				// Wait a bit for device to transition to ONLINE status after authorization
-				time.Sleep(500 * time.Millisecond)
-
-				deviceInterface := device.GetDeviceInterface()
-				if deviceInterface != nil && deviceInterface.IsConnected() {
-					// Check if device is ONLINE before requesting invoice
-					deviceState := deviceInterface.GetDeviceContext()
-					if deviceState.DeviceStatus == "ONLINE" {
-						requestID := devicepkg.GenerateID()
-						invoiceAmount := device.InvoiceAmountMsat
-						if invoiceAmount == 0 {
-							invoiceAmount = 250000 // Default 250k msat
-						}
-						deviceInterface.PublishInvoiceRequest(requestID, invoiceAmount, "STARTUP")
-						logger.WithDeviceID(devID).Infof(context.Background(), "Initial invoice request sent: %d msat", invoiceAmount)
-					} else {
-						logger.WithDeviceID(devID).Debugf(context.Background(), "Skipping initial invoice request - device status: %s", deviceState.DeviceStatus)
-					}
-				}
-			}()
+			// Invoice requests are handled through the normal flow (e.g., OnAuthorizationRejected callback)
 
 			// Store session
 			sessMux.Lock()
