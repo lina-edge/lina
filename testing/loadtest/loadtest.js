@@ -22,8 +22,8 @@ const USAGE_REPORT_INTERVAL = parseInt(__ENV.USAGE_REPORT_INTERVAL || '1'); // s
 const UNIT_PRICE_MSAT = parseInt(__ENV.UNIT_PRICE_MSAT || '100');
 const AUTHORIZE_REQUEST_MSAT = parseInt(__ENV.AUTHORIZE_REQUEST_MSAT || '10000');
 
-const WARMUP = '60s';
-const MEASURE = '120s';
+const WARMUP = '30s';
+const MEASURE = '60s';
 
 // Define load test stages
 const loadTestStages = [
@@ -32,18 +32,18 @@ const loadTestStages = [
   { duration: WARMUP, target: 50 },
   { duration: MEASURE, target: 50 },
   { duration: WARMUP, target: 0 },
-  // { duration: WARMUP, target: 75 },
-  // { duration: MEASURE, target: 75 },
-  // { duration: WARMUP, target: 100 },
-  // { duration: MEASURE, target: 100 },
-  // { duration: WARMUP, target: 125 },
-  // { duration: MEASURE, target: 125 },
-  // { duration: WARMUP, target: 150 },
-  // { duration: MEASURE, target: 150 },
-  // { duration: WARMUP, target: 175 },
-  // { duration: MEASURE, target: 175 },
-  // { duration: WARMUP, target: 200 },
-  // { duration: MEASURE, target: 200 },
+  { duration: WARMUP, target: 75 },
+  { duration: MEASURE, target: 75 },
+  { duration: WARMUP, target: 100 },
+  { duration: MEASURE, target: 100 },
+  { duration: WARMUP, target: 125 },
+  { duration: MEASURE, target: 125 },
+  { duration: WARMUP, target: 150 },
+  { duration: MEASURE, target: 150 },
+  { duration: WARMUP, target: 175 },
+  { duration: MEASURE, target: 175 },
+  { duration: WARMUP, target: 200 },
+  { duration: MEASURE, target: 200 },
 ];
 
 // Calculate maximum VU count from stages (for setup - register all devices that will be used)

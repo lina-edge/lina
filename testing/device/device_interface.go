@@ -32,49 +32,43 @@ type deviceContext struct {
 	MQTTStatus           string           `json:"mqttStatus"`
 }
 
-// getDeviceID returns the device ID (thread-safe)
+// Getters - simple read locks for individual field access
 func (ctx *deviceContext) getDeviceID() string {
 	ctx.mu.RLock()
 	defer ctx.mu.RUnlock()
 	return ctx.DeviceID
 }
 
-// getDeviceStatus returns the device status (thread-safe)
 func (ctx *deviceContext) getDeviceStatus() string {
 	ctx.mu.RLock()
 	defer ctx.mu.RUnlock()
 	return ctx.DeviceStatus
 }
 
-// getConfig returns the device config (thread-safe)
 func (ctx *deviceContext) getConfig() *DeviceConfig {
 	ctx.mu.RLock()
 	defer ctx.mu.RUnlock()
 	return ctx.Config
 }
 
-// getBalance returns the balance (thread-safe)
 func (ctx *deviceContext) getBalance() *BalanceMessage {
 	ctx.mu.RLock()
 	defer ctx.mu.RUnlock()
 	return ctx.Balance
 }
 
-// getInvoice returns the invoice (thread-safe)
 func (ctx *deviceContext) getInvoice() *InvoiceResponse {
 	ctx.mu.RLock()
 	defer ctx.mu.RUnlock()
 	return ctx.Invoice
 }
 
-// getAuthorization returns the current authorization (thread-safe)
 func (ctx *deviceContext) getAuthorization() *Authorization {
 	ctx.mu.RLock()
 	defer ctx.mu.RUnlock()
 	return ctx.CurrentAuthorization
 }
 
-// getMQTTStatus returns the MQTT status (thread-safe)
 func (ctx *deviceContext) getMQTTStatus() string {
 	ctx.mu.RLock()
 	defer ctx.mu.RUnlock()
@@ -85,16 +79,13 @@ func (ctx *deviceContext) getMQTTStatus() string {
 // It uses callbacks to delegate device-specific behavior
 // It manages the deviceContext internally
 type DeviceInterface struct {
-	callbacks            DeviceCallback
-	mqttClient           mqtt.Client
-	cfg                  *Config
-	ctx                  *deviceContext
-	deviceID             string
-	heartbeatTicker      *time.Ticker
-	heartbeatEnabled     bool
-	heartbeatMu          sync.Mutex
-	pendingAuthorization bool
-	pendingAuthMu        sync.Mutex
+	callbacks        DeviceCallback
+	mqttClient       mqtt.Client
+	cfg              *Config
+	ctx              *deviceContext
+	deviceID         string
+	heartbeatTicker  *time.Ticker
+	heartbeatEnabled bool
 }
 
 // NewDeviceInterface creates a new device interface
@@ -114,8 +105,6 @@ func NewDeviceInterface(callbacks DeviceCallback, cfg *Config, deviceID string) 
 
 // SetHeartbeatEnabled enables or disables automatic heartbeat publishing
 func (di *DeviceInterface) SetHeartbeatEnabled(enabled bool) {
-	di.heartbeatMu.Lock()
-	defer di.heartbeatMu.Unlock()
 	di.heartbeatEnabled = enabled
 	if !enabled {
 		// Stop existing ticker if any
@@ -125,7 +114,7 @@ func (di *DeviceInterface) SetHeartbeatEnabled(enabled bool) {
 		}
 	} else if di.IsConnected() {
 		// If connected and enabling, start heartbeat
-		di.startHeartbeatLocked()
+		di.startHeartbeat()
 	}
 }
 
@@ -495,10 +484,6 @@ func (di *DeviceInterface) handleAuthorizeResponse(client mqtt.Client, msg mqtt.
 		di.setAuthorization(auth)
 		di.setDeviceStatus("ONLINE")
 		di.callbacks.OnDeviceStatus("ONLINE")
-		// Clear pending authorization flag
-		di.pendingAuthMu.Lock()
-		di.pendingAuthorization = false
-		di.pendingAuthMu.Unlock()
 		di.callbacks.OnLog("Authorization granted: "+FormatMsat(response.GrantedMsat)+" msat (reserved)", "success")
 		di.callbacks.OnAuthorizationGranted(domainResponse)
 
@@ -517,10 +502,6 @@ func (di *DeviceInterface) handleAuthorizeResponse(client mqtt.Client, msg mqtt.
 		di.setAuthorization(auth)
 		di.setDeviceStatus("ONLINE")
 		di.callbacks.OnDeviceStatus("ONLINE")
-		// Clear pending authorization flag
-		di.pendingAuthMu.Lock()
-		di.pendingAuthorization = false
-		di.pendingAuthMu.Unlock()
 		di.callbacks.OnLog("Authorization active (existing): "+FormatMsat(response.RemainingMsat)+" msat remaining (request_id: "+response.RequestId+")", "info")
 		di.callbacks.OnAuthorizationActive(domainResponse)
 
@@ -541,10 +522,6 @@ func (di *DeviceInterface) handleAuthorizeResponse(client mqtt.Client, msg mqtt.
 			di.setDeviceStatus("ONLINE")
 			di.callbacks.OnDeviceStatus("ONLINE")
 		}
-		// Clear pending authorization flag
-		di.pendingAuthMu.Lock()
-		di.pendingAuthorization = false
-		di.pendingAuthMu.Unlock()
 		di.callbacks.OnLog("Authorization rejected: "+response.RequestId, "error")
 		di.callbacks.OnAuthorizationRejected(domainResponse)
 	}
@@ -626,17 +603,6 @@ func (di *DeviceInterface) checkAndRequestAuthorization(balance *BalanceMessage)
 		return
 	}
 
-	logger.DebugWithFields(ctx, "checkAndRequestAuthorization: acquiring lock", nil)
-	di.pendingAuthMu.Lock()
-	logger.DebugWithFields(ctx, "checkAndRequestAuthorization: lock acquired", nil)
-
-	// Check if already pending
-	if di.pendingAuthorization {
-		logger.DebugWithFields(ctx, "checkAndRequestAuthorization: already pending, returning", nil)
-		di.pendingAuthMu.Unlock()
-		return
-	}
-
 	// Check if there's an active authorization
 	logger.DebugWithFields(ctx, "checkAndRequestAuthorization: checking authorization", nil)
 	auth := di.ctx.getAuthorization()
@@ -652,7 +618,6 @@ func (di *DeviceInterface) checkAndRequestAuthorization(balance *BalanceMessage)
 
 	if auth != nil && auth.Status == "ACTIVE" {
 		logger.DebugWithFields(ctx, "checkAndRequestAuthorization: active authorization exists, returning", nil)
-		di.pendingAuthMu.Unlock()
 		return
 	}
 
@@ -667,15 +632,12 @@ func (di *DeviceInterface) checkAndRequestAuthorization(balance *BalanceMessage)
 
 	if lastStatus != "REJECTED" {
 		logger.DebugWithFields(ctx, "checkAndRequestAuthorization: last status not REJECTED, returning", nil)
-		di.pendingAuthMu.Unlock()
 		return
 	}
 
 	// All conditions met - request authorization
+	// Backend handles duplicate request detection, so no need to track pending state
 	logger.DebugWithFields(ctx, "checkAndRequestAuthorization: all conditions met, requesting authorization", nil)
-	di.pendingAuthorization = true
-	// Unlock before calling PublishAuthorizeRequest to avoid deadlock (it will lock again)
-	di.pendingAuthMu.Unlock()
 	di.PublishAuthorizeRequest("FUNDS_AVAILABLE")
 	logger.DebugWithFields(ctx, "checkAndRequestAuthorization: authorization request published", nil)
 }
@@ -747,6 +709,11 @@ func (di *DeviceInterface) handleControlMessage(client mqtt.Client, msg mqtt.Mes
 		di.callbacks.OnLog("Failed to parse control message: "+err.Error(), "error")
 		return
 	}
+
+	logger.DebugWithFields(context.Background(), "Processing control message on device mqtt", map[string]interface{}{
+		"command": control.Command.String(),
+		"reason":  control.Reason,
+	})
 
 	switch control.Command {
 	case mqttmodel.ControlCommand_CONTROL_COMMAND_STOP:
@@ -893,11 +860,6 @@ func (di *DeviceInterface) PublishAuthorizeRequest(reason string) {
 		return
 	}
 
-	// Set pending authorization flag (framework manages this)
-	di.pendingAuthMu.Lock()
-	di.pendingAuthorization = true
-	di.pendingAuthMu.Unlock()
-
 	request := AuthorizeRequest{
 		DeviceId:    di.deviceID,
 		RequestId:   GenerateID(),
@@ -908,10 +870,6 @@ func (di *DeviceInterface) PublishAuthorizeRequest(reason string) {
 
 	payload, err := ProtoMarshalOpts.Marshal(&request)
 	if err != nil {
-		// Clear pending flag on error
-		di.pendingAuthMu.Lock()
-		di.pendingAuthorization = false
-		di.pendingAuthMu.Unlock()
 		di.callbacks.OnLog("Failed to marshal authorize request ("+request.RequestId+"): "+err.Error(), "error")
 		return
 	}
@@ -921,10 +879,6 @@ func (di *DeviceInterface) PublishAuthorizeRequest(reason string) {
 	token := di.mqttClient.Publish(topic, 1, false, payload)
 	if token.WaitTimeout(1 * time.Second) {
 		if token.Error() != nil {
-			// Clear pending flag on error
-			di.pendingAuthMu.Lock()
-			di.pendingAuthorization = false
-			di.pendingAuthMu.Unlock()
 			di.callbacks.OnLog("Failed to publish authorize request ("+request.RequestId+"): "+token.Error().Error(), "error")
 		} else {
 			msg := fmt.Sprintf(
@@ -937,9 +891,6 @@ func (di *DeviceInterface) PublishAuthorizeRequest(reason string) {
 		}
 	} else {
 		// Timeout occurred
-		di.pendingAuthMu.Lock()
-		di.pendingAuthorization = false
-		di.pendingAuthMu.Unlock()
 		di.callbacks.OnLog("Failed to publish authorize request ("+request.RequestId+"): timeout waiting for MQTT publish", "error")
 	}
 }
@@ -1106,47 +1057,14 @@ func (di *DeviceInterface) Disconnect() {
 
 // startHeartbeat starts the heartbeat ticker if enabled
 func (di *DeviceInterface) startHeartbeat() {
-	di.heartbeatMu.Lock()
-	defer di.heartbeatMu.Unlock()
+	if !di.heartbeatEnabled {
+		return
+	}
 
 	// Stop existing ticker if any
 	if di.heartbeatTicker != nil {
 		di.heartbeatTicker.Stop()
 		di.heartbeatTicker = nil
-	}
-
-	di.startHeartbeatLocked()
-}
-
-// stopHeartbeat stops the heartbeat ticker
-// Must be called with heartbeatMu already locked
-func (di *DeviceInterface) stopHeartbeat() {
-	if di.heartbeatTicker != nil {
-		di.heartbeatTicker.Stop()
-		di.heartbeatTicker = nil
-	}
-}
-
-// restartHeartbeat restarts the heartbeat ticker with the current config interval
-func (di *DeviceInterface) restartHeartbeat() {
-	di.heartbeatMu.Lock()
-	defer di.heartbeatMu.Unlock()
-	if !di.heartbeatEnabled {
-		return
-	}
-	// Stop existing ticker if any
-	if di.heartbeatTicker != nil {
-		di.heartbeatTicker.Stop()
-		di.heartbeatTicker = nil
-	}
-	// Start with new interval
-	di.startHeartbeatLocked()
-}
-
-// startHeartbeatLocked starts the heartbeat ticker (assumes heartbeatMu is already locked)
-func (di *DeviceInterface) startHeartbeatLocked() {
-	if !di.heartbeatEnabled {
-		return
 	}
 
 	// Get heartbeat interval from config
@@ -1166,11 +1084,26 @@ func (di *DeviceInterface) startHeartbeatLocked() {
 	}()
 }
 
+// stopHeartbeat stops the heartbeat ticker
+func (di *DeviceInterface) stopHeartbeat() {
+	if di.heartbeatTicker != nil {
+		di.heartbeatTicker.Stop()
+		di.heartbeatTicker = nil
+	}
+}
+
+// restartHeartbeat restarts the heartbeat ticker with the current config interval
+func (di *DeviceInterface) restartHeartbeat() {
+	if !di.heartbeatEnabled {
+		return
+	}
+	di.startHeartbeat()
+}
+
 // IsPendingAuthorization returns whether an authorization request is pending
+// Note: This always returns false now - backend handles duplicate request detection
 func (di *DeviceInterface) IsPendingAuthorization() bool {
-	di.pendingAuthMu.Lock()
-	defer di.pendingAuthMu.Unlock()
-	return di.pendingAuthorization
+	return false
 }
 
 // HasActiveAuthorization returns whether there is an active authorization
@@ -1179,8 +1112,8 @@ func (di *DeviceInterface) HasActiveAuthorization() bool {
 	return auth != nil && auth.Status == "ACTIVE"
 }
 
-// Private methods to update deviceContext (only DeviceInterface can modify it)
-
+// Setters - simple write locks for individual field updates
+// No need for transactional consistency - individual field updates are fine
 func (di *DeviceInterface) setDeviceStatus(status string) {
 	di.ctx.mu.Lock()
 	defer di.ctx.mu.Unlock()
