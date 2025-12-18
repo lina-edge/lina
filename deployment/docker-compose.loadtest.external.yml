@@ -1,4 +1,32 @@
 services:
+  autopay:
+    build:
+      context: ..
+      dockerfile: services/Dockerfile
+      args:
+        SERVICE: autopay
+    container_name: autopay
+    environment:
+      - NETWORK=regtest
+    env_file:
+      - .env.loadtest
+    restart: unless-stopped
+
+  httpdevice:
+    build:
+      context: ..
+      dockerfile: testing/loadtest/httpdevice/Dockerfile
+    container_name: httpdevice
+    ports:
+      - "3002:8080"
+    env_file:
+      - .env.loadtest
+    environment:
+      - MQTT_BROKER=192.168.0.170
+    volumes:
+      - ../infrastructure/certs/ca.crt:/certs/ca.crt:ro
+    restart: unless-stopped
+
   prometheus:
     build:
       context: ../infrastructure/prometheus
@@ -7,9 +35,9 @@ services:
     ports:
       - "9090:9090"  # Prometheus UI
     env_file:
-      - .env
+      - .env.loadtest
     environment:
-      - TARGET_HOST=${TARGET_HOST:-localhost}
+      - TARGET_HOST=192.168.0.170
     volumes:
       - ../infrastructure/prometheus:/etc/prometheus
       - prometheus-data:/prometheus
@@ -31,7 +59,7 @@ services:
     ports:
       - "3000:3000" # Grafana UI
     env_file:
-      - .env
+      - .env.loadtest
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}

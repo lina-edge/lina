@@ -8,6 +8,9 @@
 
 set -e
 
+# Always run from the repository root (this script lives in deployment/scripts/)
+cd "$(dirname "$0")/../.."
+
 # Default values
 REGISTRY="${1:-docker.io/username/lnpay}"
 TAG="${2:-latest}"
@@ -76,9 +79,9 @@ build_and_push() {
 # Build and push all services
 echo -e "${BLUE}=== Building infrastructure services ===${NC}\n"
 
-build_and_push "caddy" "./caddy/Dockerfile" "./caddy"
-build_and_push "redis" "./redis/Dockerfile" "./redis"
-build_and_push "mosquitto" "./mosquitto/Dockerfile" "./mosquitto"
+build_and_push "caddy" "./infrastructure/caddy/Dockerfile" "./infrastructure/caddy"
+build_and_push "redis" "./infrastructure/redis/Dockerfile" "./infrastructure/redis"
+build_and_push "mosquitto" "./infrastructure/mosquitto/Dockerfile" "./infrastructure/mosquitto"
 
 echo -e "${BLUE}=== Building application services ===${NC}\n"
 
@@ -90,7 +93,7 @@ build_and_push "lightning" "./services/Dockerfile" "." "--build-arg" "SERVICE=li
 echo -e "${BLUE}=== Building smartmeter ===${NC}\n"
 
 # Smartmeter WebSocket URL is now dynamically determined from browser location
-build_and_push "smartmeter" "./smartmeter/Dockerfile" "."
+build_and_push "smartmeter" "./testing/smartmeter/Dockerfile" "."
 
 echo -e "${GREEN}=== All images built and pushed successfully! ===${NC}"
 echo -e "${BLUE}You can now use docker-compose.prod.yml to pull and run these images${NC}"
