@@ -456,18 +456,7 @@ func handleDevicePublish(c *gin.Context) {
 		return
 	}
 
-	// For other topics, use generic Publish method
-	payload, err := c.GetRawData()
-	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Publish using DeviceInterface
-	if err := deviceInterface.Publish(topic, 1, false, payload); err != nil {
-		c.JSON(500, gin.H{"error": fmt.Sprintf("failed to publish: %v", err)})
-		return
-	}
-
-	c.Status(200)
+	// Only /usage topic is supported via HTTP interface
+	// Other topics should use the specific DeviceInterface methods
+	c.JSON(404, gin.H{"error": fmt.Sprintf("topic not supported: %s. Only /usage reports are supported via HTTP", topic)})
 }

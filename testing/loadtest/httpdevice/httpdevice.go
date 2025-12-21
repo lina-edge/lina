@@ -17,7 +17,7 @@ type HTTPDevice struct {
 	Secret   string
 
 	// DeviceInterface handles MQTT communication and authorization state
-	device *devicepkg.DeviceInterface
+	device devicepkg.DeviceInterface
 
 	// Minimal state (DeviceInterface handles authorization, balance, etc.)
 	ReportingEnabled  bool // Controls whether usage reports should be sent
@@ -69,7 +69,7 @@ func (d *HTTPDevice) IsConnected() bool {
 }
 
 // GetDeviceInterface returns the underlying DeviceInterface
-func (d *HTTPDevice) GetDeviceInterface() *devicepkg.DeviceInterface {
+func (d *HTTPDevice) GetDeviceInterface() devicepkg.DeviceInterface {
 	return d.device
 }
 

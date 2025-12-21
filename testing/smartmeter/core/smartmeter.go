@@ -18,7 +18,7 @@ import (
 type SmartMeter struct {
 	mu                       sync.RWMutex
 	meterState               SmartMeterState
-	device                   *devicepkg.DeviceInterface
+	device                   devicepkg.DeviceInterface
 	powerUpdateTicker        *time.Ticker
 	usageTicker              *time.Ticker
 	currentReportingInterval int32 // Track current reporting interval to detect changes

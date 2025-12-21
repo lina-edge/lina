@@ -19,8 +19,61 @@ var (
 	logger = internal.NewLogger("device_interface")
 )
 
+// DeviceInterface defines the interface for device MQTT communication
+// It provides methods for connecting, publishing messages, and querying device state
+type DeviceInterface interface {
+
+	// Connect establishes MQTT connection
+	Connect(deviceID, deviceSecret string)
+
+	// IsConnected returns whether the MQTT client is connected
+	IsConnected() bool
+
+	// Disconnect disconnects from the MQTT broker
+	Disconnect()
+
+	// IsPendingAuthorization returns whether an authorization request is pending
+	IsPendingAuthorization() bool
+
+	// HasActiveAuthorization returns whether there is an active authorization
+	HasActiveAuthorization() bool
+
+	// SetHeartbeatEnabled enables or disables automatic heartbeat publishing
+	SetHeartbeatEnabled(enabled bool)
+
+	// GetDeviceContext returns a copy of the device context for reading
+	GetDeviceContext() DeviceState
+
+	// GetDeviceStatus returns the current device status
+	GetDeviceStatus() string
+
+	// GetDeviceConfig returns the current device configuration
+	GetDeviceConfig() *DeviceConfig
+
+	// GetBalance returns the current balance
+	GetBalance() *BalanceMessage
+
+	// GetAuthorization returns the current authorization
+	GetAuthorization() *Authorization
+
+	// PublishHeartbeat publishes a heartbeat message
+	PublishHeartbeat(status mqttmodel.DeviceStatus)
+
+	// PublishAuthorizeRequest publishes an authorization request
+	PublishAuthorizeRequest(reason string)
+
+	// PublishUsageReport publishes a usage report
+	PublishUsageReport(reportID string, kWhConsumed float64)
+
+	// PublishInvoiceRequest publishes an invoice request
+	PublishInvoiceRequest(requestID string, amountMsat int64, reason string)
+
+	// ClearInvoice clears the current invoice from the device context
+	ClearInvoice()
+}
+
 // deviceContext contains common device state shared across device types
-// It is private to DeviceInterface and should only be accessed through DeviceInterface methods
+// It is private to deviceInterfaceImpl and should only be accessed through DeviceInterface methods
 type deviceContext struct {
 	mu                   sync.RWMutex
 	DeviceID             string           `json:"deviceId"`
@@ -75,10 +128,10 @@ func (ctx *deviceContext) getMQTTStatus() string {
 	return ctx.MQTTStatus
 }
 
-// DeviceInterface handles MQTT communication for devices
+// deviceInterfaceImpl handles MQTT communication for devices
 // It uses callbacks to delegate device-specific behavior
 // It manages the deviceContext internally
-type DeviceInterface struct {
+type deviceInterfaceImpl struct {
 	callbacks        DeviceCallback
 	mqttClient       mqtt.Client
 	cfg              *Config
@@ -89,8 +142,8 @@ type DeviceInterface struct {
 }
 
 // NewDeviceInterface creates a new device interface
-func NewDeviceInterface(callbacks DeviceCallback, cfg *Config, deviceID string) *DeviceInterface {
-	return &DeviceInterface{
+func NewDeviceInterface(callbacks DeviceCallback, cfg *Config, deviceID string) DeviceInterface {
+	return &deviceInterfaceImpl{
 		callbacks:        callbacks,
 		cfg:              cfg,
 		deviceID:         deviceID,
@@ -104,7 +157,7 @@ func NewDeviceInterface(callbacks DeviceCallback, cfg *Config, deviceID string) 
 }
 
 // SetHeartbeatEnabled enables or disables automatic heartbeat publishing
-func (di *DeviceInterface) SetHeartbeatEnabled(enabled bool) {
+func (di *deviceInterfaceImpl) SetHeartbeatEnabled(enabled bool) {
 	di.heartbeatEnabled = enabled
 	if !enabled {
 		// Stop existing ticker if any
@@ -119,7 +172,7 @@ func (di *DeviceInterface) SetHeartbeatEnabled(enabled bool) {
 }
 
 // GetDeviceContext returns a copy of the device context for reading
-func (di *DeviceInterface) GetDeviceContext() DeviceState {
+func (di *deviceInterfaceImpl) GetDeviceContext() DeviceState {
 	di.ctx.mu.RLock()
 	defer di.ctx.mu.RUnlock()
 	return DeviceState{
@@ -134,27 +187,27 @@ func (di *DeviceInterface) GetDeviceContext() DeviceState {
 }
 
 // GetDeviceStatus returns the current device status
-func (di *DeviceInterface) GetDeviceStatus() string {
+func (di *deviceInterfaceImpl) GetDeviceStatus() string {
 	return di.ctx.getDeviceStatus()
 }
 
 // GetDeviceConfig returns the current device configuration
-func (di *DeviceInterface) GetDeviceConfig() *DeviceConfig {
+func (di *deviceInterfaceImpl) GetDeviceConfig() *DeviceConfig {
 	return di.ctx.getConfig()
 }
 
 // GetBalance returns the current balance
-func (di *DeviceInterface) GetBalance() *BalanceMessage {
+func (di *deviceInterfaceImpl) GetBalance() *BalanceMessage {
 	return di.ctx.getBalance()
 }
 
 // GetAuthorization returns the current authorization
-func (di *DeviceInterface) GetAuthorization() *Authorization {
+func (di *deviceInterfaceImpl) GetAuthorization() *Authorization {
 	return di.ctx.getAuthorization()
 }
 
 // createTLSConfig creates TLS configuration for MQTT connection
-func (di *DeviceInterface) createTLSConfig() (*tls.Config, error) {
+func (di *deviceInterfaceImpl) createTLSConfig() (*tls.Config, error) {
 	caFile := di.cfg.MQTTTLSCACert
 	skipVerify := di.cfg.MQTTTLSSkipVerify
 	serverName := di.cfg.MQTTTLSServerName
@@ -180,7 +233,7 @@ func (di *DeviceInterface) createTLSConfig() (*tls.Config, error) {
 }
 
 // Connect establishes MQTT connection
-func (di *DeviceInterface) Connect(deviceID, deviceSecret string) {
+func (di *deviceInterfaceImpl) Connect(deviceID, deviceSecret string) {
 	// Check if already connected
 	if di.IsConnected() {
 		di.callbacks.OnLog("Already connected to MQTT broker, updating status", "info")
@@ -290,7 +343,7 @@ func isMQTTAuthError(errMsg string) bool {
 	return strings.Contains(msg, "not authorized") || strings.Contains(msg, "not authorised")
 }
 
-func (di *DeviceInterface) subscribeToTopics() {
+func (di *deviceInterfaceImpl) subscribeToTopics() {
 	ctx := context.Background()
 
 	// Define topics in a specific order - critical response topics first
@@ -365,7 +418,7 @@ func (di *DeviceInterface) subscribeToTopics() {
 // completeConnectionSequence handles the startup sequence after MQTT connection
 // It sends heartbeat and authorization request, then calls OnConnected
 // Note: This function is called after subscribeToTopics() completes, so subscriptions are already ready
-func (di *DeviceInterface) completeConnectionSequence() {
+func (di *deviceInterfaceImpl) completeConnectionSequence() {
 	ctx := context.Background()
 	logger.WithDeviceID(di.deviceID).
 		Info(ctx, "Subscriptions ready, proceeding with startup sequence on device mqtt")
@@ -381,7 +434,7 @@ func (di *DeviceInterface) completeConnectionSequence() {
 }
 
 // wrapHandler wraps a message handler in a goroutine to prevent blocking the MQTT client
-func (di *DeviceInterface) wrapHandler(handler mqtt.MessageHandler) mqtt.MessageHandler {
+func (di *deviceInterfaceImpl) wrapHandler(handler mqtt.MessageHandler) mqtt.MessageHandler {
 	return func(client mqtt.Client, msg mqtt.Message) {
 		topic := msg.Topic()
 		payloadLen := len(msg.Payload())
@@ -433,7 +486,7 @@ func (m *messageCopy) Payload() []byte   { return m.payload }
 func (m *messageCopy) Ack()              {}
 
 // MQTT Message Handlers
-func (di *DeviceInterface) handleConfigMessage(client mqtt.Client, msg mqtt.Message) {
+func (di *deviceInterfaceImpl) handleConfigMessage(client mqtt.Client, msg mqtt.Message) {
 	// Deserialize using proto model first
 	var config mqttmodel.ConfigPayload
 	if err := ProtoUnmarshalOpts.Unmarshal(msg.Payload(), &config); err != nil {
@@ -458,7 +511,7 @@ func (di *DeviceInterface) handleConfigMessage(client mqtt.Client, msg mqtt.Mess
 	di.callbacks.OnConfigUpdated(domainConfig)
 }
 
-func (di *DeviceInterface) handleAuthorizeResponse(client mqtt.Client, msg mqtt.Message) {
+func (di *deviceInterfaceImpl) handleAuthorizeResponse(client mqtt.Client, msg mqtt.Message) {
 	// Deserialize using proto model first
 	var response mqttmodel.AuthorizationResponsePayload
 	if err := ProtoUnmarshalOpts.Unmarshal(msg.Payload(), &response); err != nil {
@@ -527,7 +580,7 @@ func (di *DeviceInterface) handleAuthorizeResponse(client mqtt.Client, msg mqtt.
 	}
 }
 
-func (di *DeviceInterface) handleBalanceMessage(client mqtt.Client, msg mqtt.Message) {
+func (di *deviceInterfaceImpl) handleBalanceMessage(client mqtt.Client, msg mqtt.Message) {
 	ctx := context.Background()
 	// Log that we received a balance message
 	logger.DebugWithFields(ctx, "Received balance message on device mqtt", map[string]interface{}{
@@ -591,7 +644,7 @@ func (di *DeviceInterface) handleBalanceMessage(client mqtt.Client, msg mqtt.Mes
 
 // checkAndRequestAuthorization determines if authorization should be requested
 // and publishes the request if needed. This is framework logic.
-func (di *DeviceInterface) checkAndRequestAuthorization(balance *BalanceMessage) {
+func (di *deviceInterfaceImpl) checkAndRequestAuthorization(balance *BalanceMessage) {
 	ctx := context.Background()
 	available := balance.AvailableMsat
 	logger.DebugWithFields(ctx, "checkAndRequestAuthorization: starting", map[string]interface{}{
@@ -642,7 +695,7 @@ func (di *DeviceInterface) checkAndRequestAuthorization(balance *BalanceMessage)
 	logger.DebugWithFields(ctx, "checkAndRequestAuthorization: authorization request published", nil)
 }
 
-func (di *DeviceInterface) handleInvoiceResponse(client mqtt.Client, msg mqtt.Message) {
+func (di *deviceInterfaceImpl) handleInvoiceResponse(client mqtt.Client, msg mqtt.Message) {
 	// Deserialize using proto model first
 	var response mqttmodel.InvoiceResponsePayload
 	if err := ProtoUnmarshalOpts.Unmarshal(msg.Payload(), &response); err != nil {
@@ -671,7 +724,7 @@ func (di *DeviceInterface) handleInvoiceResponse(client mqtt.Client, msg mqtt.Me
 	}
 }
 
-func (di *DeviceInterface) handleInvoiceEvent(client mqtt.Client, msg mqtt.Message) {
+func (di *deviceInterfaceImpl) handleInvoiceEvent(client mqtt.Client, msg mqtt.Message) {
 	// Deserialize using proto model first
 	var event mqttmodel.InvoiceEventPayload
 	if err := ProtoUnmarshalOpts.Unmarshal(msg.Payload(), &event); err != nil {
@@ -696,14 +749,14 @@ func (di *DeviceInterface) handleInvoiceEvent(client mqtt.Client, msg mqtt.Messa
 }
 
 // handleInvoiceSettled is a helper that handles invoice settlement
-func (di *DeviceInterface) handleInvoiceSettled(invoiceID string, amountMsat int64) {
+func (di *deviceInterfaceImpl) handleInvoiceSettled(invoiceID string, amountMsat int64) {
 	di.setInvoice(nil)
 	di.callbacks.OnInvoiceSettled(invoiceID, amountMsat)
 	amountMsg := FormatMsat(amountMsat)
 	di.callbacks.OnLog(fmt.Sprintf("Invoice settled: %s (%s msats received)", invoiceID, amountMsg), "success")
 }
 
-func (di *DeviceInterface) handleControlMessage(client mqtt.Client, msg mqtt.Message) {
+func (di *deviceInterfaceImpl) handleControlMessage(client mqtt.Client, msg mqtt.Message) {
 	var control mqttmodel.ControlPayload
 	if err := ProtoUnmarshalOpts.Unmarshal(msg.Payload(), &control); err != nil {
 		di.callbacks.OnLog("Failed to parse control message: "+err.Error(), "error")
@@ -749,7 +802,7 @@ func (di *DeviceInterface) handleControlMessage(client mqtt.Client, msg mqtt.Mes
 }
 
 // handleStopCommand handles STOP control command
-func (di *DeviceInterface) handleStopCommand(reason string) {
+func (di *deviceInterfaceImpl) handleStopCommand(reason string) {
 	// Set default reason if empty (framework logic)
 	if reason == "" {
 		reason = "REMOTE_COMMAND"
@@ -760,7 +813,7 @@ func (di *DeviceInterface) handleStopCommand(reason string) {
 }
 
 // handlePauseCommand handles PAUSE control command
-func (di *DeviceInterface) handlePauseCommand(reason string) {
+func (di *deviceInterfaceImpl) handlePauseCommand(reason string) {
 	// Set default reason if empty (framework logic)
 	if reason == "" {
 		reason = "REMOTE_COMMAND"
@@ -777,7 +830,7 @@ func (di *DeviceInterface) handlePauseCommand(reason string) {
 }
 
 // handleResumeCommand handles RESUME control command
-func (di *DeviceInterface) handleResumeCommand() {
+func (di *deviceInterfaceImpl) handleResumeCommand() {
 	// Update device status to ONLINE if currently PAUSED or OFFLINE
 	status := di.ctx.getDeviceStatus()
 	if status == "PAUSED" || status == "OFFLINE" {
@@ -790,7 +843,7 @@ func (di *DeviceInterface) handleResumeCommand() {
 }
 
 // handlePingCommand handles PING control command
-func (di *DeviceInterface) handlePingCommand(pingID string) {
+func (di *deviceInterfaceImpl) handlePingCommand(pingID string) {
 	// Call OnControlPing if callback supports it (optional)
 	if pingCallback, ok := di.callbacks.(interface{ OnControlPing(string) }); ok {
 		pingCallback.OnControlPing(pingID)
@@ -804,7 +857,7 @@ func (di *DeviceInterface) handlePingCommand(pingID string) {
 }
 
 // handleAuthorizationCommand handles AUTHORIZATION control command
-func (di *DeviceInterface) handleAuthorizationCommand(reason string) {
+func (di *deviceInterfaceImpl) handleAuthorizationCommand(reason string) {
 	if reason == "" {
 		reason = "AUTHORIZATION_REQUIRED"
 	}
@@ -818,7 +871,7 @@ func (di *DeviceInterface) handleAuthorizationCommand(reason string) {
 }
 
 // MQTT Publishers
-func (di *DeviceInterface) PublishHeartbeat(status mqttmodel.DeviceStatus) {
+func (di *deviceInterfaceImpl) PublishHeartbeat(status mqttmodel.DeviceStatus) {
 	if di.mqttClient == nil || !di.mqttClient.IsConnected() {
 		return
 	}
@@ -849,7 +902,7 @@ func (di *DeviceInterface) PublishHeartbeat(status mqttmodel.DeviceStatus) {
 	}
 }
 
-func (di *DeviceInterface) PublishAuthorizeRequest(reason string) {
+func (di *deviceInterfaceImpl) PublishAuthorizeRequest(reason string) {
 	if di.mqttClient == nil || !di.mqttClient.IsConnected() {
 		return
 	}
@@ -895,7 +948,7 @@ func (di *DeviceInterface) PublishAuthorizeRequest(reason string) {
 	}
 }
 
-func (di *DeviceInterface) PublishUsageReport(reportID string, kWhConsumed float64) {
+func (di *deviceInterfaceImpl) PublishUsageReport(reportID string, kWhConsumed float64) {
 	if di.mqttClient == nil || !di.mqttClient.IsConnected() {
 		di.callbacks.OnLog("Cannot publish usage report: MQTT client not connected", "error")
 		return
@@ -943,7 +996,7 @@ func (di *DeviceInterface) PublishUsageReport(reportID string, kWhConsumed float
 	di.callbacks.OnLog(msg, "info")
 }
 
-func (di *DeviceInterface) PublishInvoiceRequest(requestID string, amountMsat int64, reason string) {
+func (di *deviceInterfaceImpl) PublishInvoiceRequest(requestID string, amountMsat int64, reason string) {
 	if di.mqttClient == nil || !di.mqttClient.IsConnected() {
 		di.callbacks.OnLog("Cannot publish invoice request: MQTT client not connected", "error")
 		return
@@ -991,7 +1044,7 @@ func (di *DeviceInterface) PublishInvoiceRequest(requestID string, amountMsat in
 }
 
 // ClearInvoice clears the current invoice from the device context
-func (di *DeviceInterface) ClearInvoice() {
+func (di *deviceInterfaceImpl) ClearInvoice() {
 	currentInvoice := di.ctx.getInvoice()
 	if currentInvoice != nil {
 		di.setInvoice(nil)
@@ -999,9 +1052,9 @@ func (di *DeviceInterface) ClearInvoice() {
 	}
 }
 
-// Publish publishes an arbitrary message to an MQTT topic
+// publish publishes an arbitrary message to an MQTT topic (internal use only)
 // For usage reports, this is fire-and-forget to avoid blocking HTTP handlers
-func (di *DeviceInterface) Publish(topic string, qos byte, retained bool, payload []byte) error {
+func (di *deviceInterfaceImpl) publish(topic string, qos byte, retained bool, payload []byte) error {
 	if di.mqttClient == nil || !di.mqttClient.IsConnected() {
 		return fmt.Errorf("MQTT client not connected")
 	}
@@ -1030,12 +1083,12 @@ func (di *DeviceInterface) Publish(topic string, qos byte, retained bool, payloa
 }
 
 // IsConnected returns whether the MQTT client is connected
-func (di *DeviceInterface) IsConnected() bool {
+func (di *deviceInterfaceImpl) IsConnected() bool {
 	return di.mqttClient != nil && di.mqttClient.IsConnected()
 }
 
 // Disconnect disconnects from the MQTT broker
-func (di *DeviceInterface) Disconnect() {
+func (di *deviceInterfaceImpl) Disconnect() {
 	// Stop heartbeat before disconnecting
 	di.stopHeartbeat()
 
@@ -1056,7 +1109,7 @@ func (di *DeviceInterface) Disconnect() {
 }
 
 // startHeartbeat starts the heartbeat ticker if enabled
-func (di *DeviceInterface) startHeartbeat() {
+func (di *deviceInterfaceImpl) startHeartbeat() {
 	if !di.heartbeatEnabled {
 		return
 	}
@@ -1085,7 +1138,7 @@ func (di *DeviceInterface) startHeartbeat() {
 }
 
 // stopHeartbeat stops the heartbeat ticker
-func (di *DeviceInterface) stopHeartbeat() {
+func (di *deviceInterfaceImpl) stopHeartbeat() {
 	if di.heartbeatTicker != nil {
 		di.heartbeatTicker.Stop()
 		di.heartbeatTicker = nil
@@ -1093,7 +1146,7 @@ func (di *DeviceInterface) stopHeartbeat() {
 }
 
 // restartHeartbeat restarts the heartbeat ticker with the current config interval
-func (di *DeviceInterface) restartHeartbeat() {
+func (di *deviceInterfaceImpl) restartHeartbeat() {
 	if !di.heartbeatEnabled {
 		return
 	}
@@ -1102,49 +1155,49 @@ func (di *DeviceInterface) restartHeartbeat() {
 
 // IsPendingAuthorization returns whether an authorization request is pending
 // Note: This always returns false now - backend handles duplicate request detection
-func (di *DeviceInterface) IsPendingAuthorization() bool {
+func (di *deviceInterfaceImpl) IsPendingAuthorization() bool {
 	return false
 }
 
 // HasActiveAuthorization returns whether there is an active authorization
-func (di *DeviceInterface) HasActiveAuthorization() bool {
+func (di *deviceInterfaceImpl) HasActiveAuthorization() bool {
 	auth := di.ctx.getAuthorization()
 	return auth != nil && auth.Status == "ACTIVE"
 }
 
 // Setters - simple write locks for individual field updates
 // No need for transactional consistency - individual field updates are fine
-func (di *DeviceInterface) setDeviceStatus(status string) {
+func (di *deviceInterfaceImpl) setDeviceStatus(status string) {
 	di.ctx.mu.Lock()
 	defer di.ctx.mu.Unlock()
 	di.ctx.DeviceStatus = status
 }
 
-func (di *DeviceInterface) setConfig(config *DeviceConfig) {
+func (di *deviceInterfaceImpl) setConfig(config *DeviceConfig) {
 	di.ctx.mu.Lock()
 	defer di.ctx.mu.Unlock()
 	di.ctx.Config = config
 }
 
-func (di *DeviceInterface) setBalance(balance *BalanceMessage) {
+func (di *deviceInterfaceImpl) setBalance(balance *BalanceMessage) {
 	di.ctx.mu.Lock()
 	defer di.ctx.mu.Unlock()
 	di.ctx.Balance = balance
 }
 
-func (di *DeviceInterface) setInvoice(invoice *InvoiceResponse) {
+func (di *deviceInterfaceImpl) setInvoice(invoice *InvoiceResponse) {
 	di.ctx.mu.Lock()
 	defer di.ctx.mu.Unlock()
 	di.ctx.Invoice = invoice
 }
 
-func (di *DeviceInterface) setAuthorization(auth *Authorization) {
+func (di *deviceInterfaceImpl) setAuthorization(auth *Authorization) {
 	di.ctx.mu.Lock()
 	defer di.ctx.mu.Unlock()
 	di.ctx.CurrentAuthorization = auth
 }
 
-func (di *DeviceInterface) setMQTTStatus(status string) {
+func (di *deviceInterfaceImpl) setMQTTStatus(status string) {
 	di.ctx.mu.Lock()
 	defer di.ctx.mu.Unlock()
 	di.ctx.MQTTStatus = status

@@ -74,6 +74,7 @@ node_modules/
 
 # misc
 .DS_Store
+.env*
 .env.local
 .env.development.local
 .env.test.local
@@ -95,3 +96,6 @@ venv/
 measurement/docker_stats.csv
 measurement/graphs/*.png
 graphs/
+
+testing/measurement/docker_stats.csv
+*.tex
