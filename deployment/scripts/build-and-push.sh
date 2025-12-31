@@ -89,6 +89,7 @@ build_and_push "device" "./services/Dockerfile" "." "--build-arg" "SERVICE=devic
 build_and_push "ledger" "./services/Dockerfile" "." "--build-arg" "SERVICE=ledger"
 build_and_push "consumption" "./services/Dockerfile" "." "--build-arg" "SERVICE=consumption"
 build_and_push "lightning" "./services/Dockerfile" "." "--build-arg" "SERVICE=lightning"
+build_and_push "autopay" "./services/Dockerfile" "." "--build-arg" "SERVICE=autopay"
 
 echo -e "${BLUE}=== Building smartmeter ===${NC}\n"
 

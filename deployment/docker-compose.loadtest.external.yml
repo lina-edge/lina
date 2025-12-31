@@ -1,15 +1,25 @@
 services:
   autopay:
-    build:
-      context: ..
-      dockerfile: services/Dockerfile
-      args:
-        SERVICE: autopay
+    image: 7robertodantas/lina-autopay:latest
     container_name: autopay
     environment:
       - NETWORK=regtest
     env_file:
       - .env.loadtest
+    restart: unless-stopped
+
+  smartmeter:
+    image: 7robertodantas/lina-smartmeter:latest
+    container_name: smartmeter
+    ports:
+      - "3010:8080" # UI
+    environment:
+      - DEVICE_ID=smart-meter-001
+      - DEVICE_SECRET=smart-meter-001_password
+    env_file:
+      - .env.simulators
+    volumes:
+      - ../infrastructure/certs/ca.crt:/certs/ca.crt:ro
     restart: unless-stopped
 
   httpdevice:
