@@ -232,6 +232,47 @@ Use the production compose file which pulls pre-built images:
 docker-compose -f deployment/docker-compose.prod.yml up -d
 ```
 
+### Building and Pushing Docker Images
+
+To build and push Docker images to a registry (for use in production or across multiple machines):
+
+1. **Login to your Docker registry**:
+   ```bash
+   docker login
+   # or for private registries:
+   docker login your-registry.com
+   ```
+
+2. **Build and push all images**:
+   ```bash
+   # Make the script executable (if needed)
+   chmod +x deployment/scripts/build-and-push.sh
+   
+   # Build and push to Docker Hub (replace 'username' with your Docker Hub username)
+   ./deployment/scripts/build-and-push.sh docker.io/username/lina latest
+   
+   # Or use a specific tag
+   ./deployment/scripts/build-and-push.sh docker.io/username/lina v1.0.0
+   
+   # For GitHub Container Registry
+   ./deployment/scripts/build-and-push.sh ghcr.io/username/lina latest
+   
+   # For a private registry
+   ./deployment/scripts/build-and-push.sh registry.example.com/lina latest
+   ```
+
+The script builds multi-architecture images (amd64 and arm64) by default. To build for specific platforms:
+
+```bash
+# Build only for amd64
+./deployment/scripts/build-and-push.sh docker.io/username/lina latest linux/amd64
+
+# Build for specific platforms
+./deployment/scripts/build-and-push.sh docker.io/username/lina latest linux/amd64,linux/arm64
+```
+
+For detailed instructions, see `deployment/scripts/DOCKER_PUBLISH.md`
+
 ## Configuration
 
 ### Environment Variables
