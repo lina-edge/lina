@@ -167,5 +167,20 @@ Once saturation is observed at a given $N$, higher load levels are not executed.
 API_BASE_URL=http://192.168.0.170:8080 K6_PROMETHEUS_RW_SERVER_URL=http://localhost:9090/api/v1/write k6 run -o experimental-prometheus-rw  testing/loadtest/loadtest.js
 ```
 
+## Collecting metrics
+
+```json
+{"from":"2026-01-08T18:25:40.655Z","to":"2026-01-08T18:46:33.820Z"}
+```
+
+```
+python3 export_metrics.py --from "2026-01-08T18:25:40.655Z" --to "2026-01-08T18:46:33.820Z" --prometheus-url http://localhost:9090
+```
+
+```bash
+python3 plot_exported_metrics.py
+```
+
+
 # Evaluation and Observations
 
