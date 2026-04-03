@@ -1,0 +1,60 @@
+---
+# Paths on the target host (see ansible.md)
+lina_install_root: /opt/lina
+lina_config_dir: /etc/lina
+lina_lib_dir: /var/lib/lina
+
+# Staging directory on the control node (override in inventory)
+lina_binaries_dir: ""
+
+lina_mosquitto_tls_enable: false
+lina_mosquitto_tls_port: 8883
+lina_mosquitto_plain_port: 1883
+# When TLS is enabled, copy certs to the target and set these:
+lina_mosquitto_cafile: ""
+lina_mosquitto_certfile: ""
+lina_mosquitto_keyfile: ""
+
+# Redis (optional password; leave empty for none)
+lina_redis_password: ""
+
+# Shared service auth
+lina_service_token: "change-me-in-production"
+
+# Lightning / LND (required for lightning-service; hex strings from your node)
+lina_lnd_host: "127.0.0.1:10009"
+lina_lnd_tls_cert_hex: ""
+lina_lnd_tls_server_name: "localhost"
+lina_lnd_macaroon_hex: ""
+lina_lightning_network: "mainnet"
+
+# MQTT (native broker on loopback; TLS optional via lina_mosquitto_tls_enable)
+lina_mqtt_broker: "127.0.0.1"
+lina_mqtt_use_tls: false
+
+# Device ↔ MQTT (must match mosquitto / dynsec provisioning)
+lina_device_mqtt_username: "device-service"
+lina_device_mqtt_password: "change-me"
+lina_mqtt_dynsec_admin_user: "dynsec_admin"
+lina_mqtt_dynsec_admin_password: "change-me"
+
+# Single-host ports (avoid collisions; REST and gRPC are loopback-only by default)
+lina_device_api_addr: ":8080"
+lina_ledger_listen_addr: ":8081"
+lina_consumption_listen_addr: ":8082"
+lina_lightning_listen_addr: ":8083"
+lina_ledger_grpc_addr: ":9090"
+lina_consumption_grpc_addr: ":9091"
+lina_lightning_grpc_addr: ":9092"
+lina_device_metrics_addr: ":9466"
+lina_ledger_metrics_addr: ":9460"
+lina_consumption_metrics_addr: ":9465"
+
+# Monitoring
+lina_install_systemd_exporter: true
+lina_process_exporter_version: "0.8.7"
+lina_redis_exporter_version: "v1.80.1"
+lina_systemd_exporter_version: "0.7.0"
+lina_redis_exporter_listen: ":9121"
+lina_process_exporter_listen: ":9256"
+lina_systemd_exporter_listen: ":9558"

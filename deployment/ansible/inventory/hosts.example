@@ -1,0 +1,10 @@
+# Copy to `hosts` (same directory) and set your edge host + paths.
+#   cp inventory/hosts.example inventory/hosts
+
+[edge]
+edge-pi ansible_host=192.168.1.50 ansible_user=pi
+
+[edge:vars]
+# Absolute path on the Ansible control machine to a directory containing:
+#   device, ledger, consumption, lightning (built Go binaries)
+lina_binaries_dir=/absolute/path/to/lina/binaries

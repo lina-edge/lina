@@ -1,0 +1,10 @@
+---
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart lina stack
+  ansible.builtin.systemd:
+    name: "{{ item.name }}"
+    state: restarted
+  loop: "{{ lina_services }}"

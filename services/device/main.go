@@ -156,15 +156,15 @@ func main() {
 	logger.Info(ctx, "Device service is running. Press Ctrl+C to stop")
 	logger.Infof(ctx, "Northbound REST API available at http://localhost%s", cfg.APIAddr)
 
-	// Start metrics server on port 9464
+	metricsAddr := internal.GetEnv("METRICS_ADDR", ":9464")
 	go func() {
 		metricsMux := http.NewServeMux()
 		metricsMux.Handle("/metrics", GetMetricsHandler())
 		metricsServer := &http.Server{
-			Addr:    ":9464",
+			Addr:    metricsAddr,
 			Handler: metricsMux,
 		}
-		logger.Info(ctx, "Metrics server listening on :9464/metrics")
+		logger.Infof(ctx, "Metrics server listening on %s/metrics", metricsAddr)
 		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Errorf(ctx, "Failed to start metrics server: %v", err)
 		}

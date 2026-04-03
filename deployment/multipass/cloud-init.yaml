@@ -1,0 +1,14 @@
+#cloud-config
+# Ubuntu cloud image for Multipass — baseline for Ansible (apt, systemd, SSH).
+package_update: true
+package_upgrade: false
+
+packages:
+  - python3
+  - sudo
+  - openssh-server
+
+# Passwordless sudo for the default `ubuntu` user is already typical on these images;
+# explicit sudo group membership does not hurt.
+users:
+  - default

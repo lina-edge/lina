@@ -1,0 +1,16 @@
+[Unit]
+Description=Prometheus redis_exporter (LINA edge)
+After=network-online.target redis-server.service
+Wants=redis-server.service
+
+[Service]
+User={{ lina_exporter_user }}
+Group={{ lina_exporter_group }}
+EnvironmentFile={{ lina_config_dir }}/redis-exporter.env
+ExecStart=/usr/local/bin/redis_exporter --web.listen-address={{ lina_redis_exporter_listen }}
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

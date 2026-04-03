@@ -1,0 +1,9 @@
+---
+- name: Push LINA binaries
+  ansible.builtin.copy:
+    src: "{{ lina_binaries_dir }}/{{ item.binary }}"
+    dest: "{{ lina_install_root }}/bin/{{ item.binary }}"
+    owner: root
+    group: root
+    mode: "0755"
+  loop: "{{ lina_services }}"

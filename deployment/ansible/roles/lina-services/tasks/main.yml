@@ -1,0 +1,9 @@
+---
+- name: Users, directories, and permissions
+  ansible.builtin.import_tasks: users_and_dirs.yml
+
+- name: Install service binaries from control node
+  ansible.builtin.import_tasks: binaries.yml
+
+- name: Environment and systemd units
+  ansible.builtin.import_tasks: systemd.yml

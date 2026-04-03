@@ -1,0 +1,237 @@
+---
+- name: Exporter group
+  ansible.builtin.group:
+    name: "{{ lina_exporter_group }}"
+    system: true
+    state: present
+
+- name: Exporter user
+  ansible.builtin.user:
+    name: "{{ lina_exporter_user }}"
+    group: "{{ lina_exporter_group }}"
+    system: true
+    create_home: false
+    shell: /usr/sbin/nologin
+
+- name: Install Prometheus node exporter (package)
+  ansible.builtin.apt:
+    name: prometheus-node-exporter
+    state: present
+
+- name: Enable node exporter
+  ansible.builtin.systemd:
+    name: prometheus-node-exporter
+    enabled: true
+    state: started
+
+- name: Map machine architecture to release tarball suffix
+  ansible.builtin.set_fact:
+    lina_go_arch: >-
+      {{
+        'arm64' if ansible_architecture == 'aarch64'
+        else ('amd64' if ansible_architecture == 'x86_64'
+        else ansible_architecture)
+      }}
+
+- name: Remove stale process-exporter unpack directory
+  ansible.builtin.file:
+    path: /tmp/lina-pe-unpack
+    state: absent
+
+- name: Download process-exporter
+  ansible.builtin.get_url:
+    url: >-
+      https://github.com/ncabatoff/process-exporter/releases/download/v{{
+      lina_process_exporter_version }}/process-exporter-{{
+      lina_process_exporter_version }}.linux-{{ lina_go_arch }}.tar.gz
+    dest: "/tmp/process-exporter-{{ lina_process_exporter_version }}.linux-{{ lina_go_arch }}.tar.gz"
+    mode: "0644"
+
+- name: Unpack process-exporter
+  ansible.builtin.unarchive:
+    src: "/tmp/process-exporter-{{ lina_process_exporter_version }}.linux-{{ lina_go_arch }}.tar.gz"
+    dest: /tmp/lina-pe-unpack
+    remote_src: true
+
+- name: Locate process-exporter binary in tarball tree
+  ansible.builtin.find:
+    paths: /tmp/lina-pe-unpack
+    patterns: '^process-exporter$'
+    file_type: file
+    recurse: true
+    use_regex: true
+  register: lina_pe_find
+
+- name: Install process-exporter binary
+  ansible.builtin.copy:
+    src: "{{ (lina_pe_find.files | sort(attribute='path'))[0].path }}"
+    dest: /usr/local/bin/process-exporter
+    owner: root
+    group: root
+    mode: "0755"
+    remote_src: true
+  when: lina_pe_find.files | length > 0
+
+- name: process-exporter configuration directory
+  ansible.builtin.file:
+    path: /etc/process-exporter
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: process-exporter configuration
+  ansible.builtin.template:
+    src: process-exporter.yaml.j2
+    dest: /etc/process-exporter/config.yaml
+    owner: root
+    group: "{{ lina_exporter_group }}"
+    mode: "0640"
+  notify: Restart process-exporter
+
+- name: process-exporter systemd unit
+  ansible.builtin.template:
+    src: process-exporter.service.j2
+    dest: /etc/systemd/system/process-exporter.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd monitoring
+    - Restart process-exporter
+
+- name: Remove stale redis_exporter unpack directory
+  ansible.builtin.file:
+    path: /tmp/lina-redis-exporter-unpack
+    state: absent
+
+- name: Download redis_exporter
+  ansible.builtin.get_url:
+    url: >-
+      https://github.com/oliver006/redis_exporter/releases/download/{{
+      lina_redis_exporter_version }}/redis_exporter-{{
+      lina_redis_exporter_version }}.linux-{{ lina_go_arch }}.tar.gz
+    dest: "/tmp/redis_exporter-{{ lina_redis_exporter_version }}.linux-{{ lina_go_arch }}.tar.gz"
+    mode: "0644"
+
+- name: Unpack redis_exporter
+  ansible.builtin.unarchive:
+    src: "/tmp/redis_exporter-{{ lina_redis_exporter_version }}.linux-{{ lina_go_arch }}.tar.gz"
+    dest: /tmp/lina-redis-exporter-unpack
+    remote_src: true
+
+- name: Locate redis_exporter binary in tarball tree
+  ansible.builtin.find:
+    paths: /tmp/lina-redis-exporter-unpack
+    patterns: '^redis_exporter$'
+    file_type: file
+    recurse: true
+    use_regex: true
+  register: lina_redis_find
+
+- name: Install redis_exporter binary
+  ansible.builtin.copy:
+    src: "{{ (lina_redis_find.files | sort(attribute='path'))[0].path }}"
+    dest: /usr/local/bin/redis_exporter
+    owner: root
+    group: root
+    mode: "0755"
+    remote_src: true
+  when: lina_redis_find.files | length > 0
+
+- name: redis_exporter environment file
+  ansible.builtin.template:
+    src: redis-exporter.env.j2
+    dest: "{{ lina_config_dir }}/redis-exporter.env"
+    owner: root
+    group: "{{ lina_exporter_group }}"
+    mode: "0640"
+  notify: Restart redis-exporter
+
+- name: redis_exporter systemd unit
+  ansible.builtin.template:
+    src: redis-exporter.service.j2
+    dest: /etc/systemd/system/redis-exporter.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd monitoring
+    - Restart redis-exporter
+
+- name: Remove stale systemd_exporter unpack directory
+  ansible.builtin.file:
+    path: /tmp/lina-systemd-exporter-unpack
+    state: absent
+  when: lina_install_systemd_exporter | bool
+
+- name: Download systemd_exporter
+  ansible.builtin.get_url:
+    url: >-
+      https://github.com/prometheus-community/systemd_exporter/releases/download/v{{
+      lina_systemd_exporter_version }}/systemd_exporter-{{
+      lina_systemd_exporter_version }}.linux-{{ lina_go_arch }}.tar.gz
+    dest: "/tmp/systemd_exporter-{{ lina_systemd_exporter_version }}.linux-{{ lina_go_arch }}.tar.gz"
+    mode: "0644"
+  when: lina_install_systemd_exporter | bool
+
+- name: Unpack systemd_exporter
+  ansible.builtin.unarchive:
+    src: "/tmp/systemd_exporter-{{ lina_systemd_exporter_version }}.linux-{{ lina_go_arch }}.tar.gz"
+    dest: /tmp/lina-systemd-exporter-unpack
+    remote_src: true
+  when: lina_install_systemd_exporter | bool
+
+- name: Locate systemd_exporter binary in tarball tree
+  ansible.builtin.find:
+    paths: /tmp/lina-systemd-exporter-unpack
+    patterns: '^systemd_exporter$'
+    file_type: file
+    recurse: true
+    use_regex: true
+  register: lina_systemd_exp_find
+  when: lina_install_systemd_exporter | bool
+
+- name: Install systemd_exporter binary
+  ansible.builtin.copy:
+    src: "{{ (lina_systemd_exp_find.files | sort(attribute='path'))[0].path }}"
+    dest: /usr/local/bin/systemd_exporter
+    owner: root
+    group: root
+    mode: "0755"
+    remote_src: true
+  when: lina_install_systemd_exporter | bool and lina_systemd_exp_find.files | length > 0
+
+- name: systemd_exporter systemd unit
+  ansible.builtin.template:
+    src: systemd-exporter.service.j2
+    dest: /etc/systemd/system/systemd-exporter.service
+    owner: root
+    group: root
+    mode: "0644"
+  when: lina_install_systemd_exporter | bool
+  notify:
+    - Reload systemd monitoring
+    - Restart systemd-exporter
+
+- name: Enable and start process-exporter
+  ansible.builtin.systemd:
+    name: process-exporter
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Enable and start redis-exporter
+  ansible.builtin.systemd:
+    name: redis-exporter
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Enable and start systemd-exporter
+  ansible.builtin.systemd:
+    name: systemd-exporter
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: lina_install_systemd_exporter | bool

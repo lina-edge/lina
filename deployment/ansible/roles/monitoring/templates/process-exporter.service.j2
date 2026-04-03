@@ -1,0 +1,14 @@
+[Unit]
+Description=Prometheus process-exporter (LINA edge)
+After=network-online.target
+
+[Service]
+User={{ lina_exporter_user }}
+Group={{ lina_exporter_group }}
+ExecStart=/usr/local/bin/process-exporter --config.path=/etc/process-exporter/config.yaml --web.listen-address={{ lina_process_exporter_listen }}
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

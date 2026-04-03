@@ -1,0 +1,14 @@
+[Unit]
+Description=Prometheus systemd_exporter (LINA edge)
+After=network-online.target
+
+[Service]
+User={{ lina_exporter_user }}
+Group={{ lina_exporter_group }}
+ExecStart=/usr/local/bin/systemd_exporter --web.listen-address={{ lina_systemd_exporter_listen }}
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

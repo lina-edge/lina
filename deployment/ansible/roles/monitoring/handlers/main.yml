@@ -1,0 +1,19 @@
+---
+- name: Reload systemd monitoring
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart process-exporter
+  ansible.builtin.systemd:
+    name: process-exporter
+    state: restarted
+
+- name: Restart redis-exporter
+  ansible.builtin.systemd:
+    name: redis-exporter
+    state: restarted
+
+- name: Restart systemd-exporter
+  ansible.builtin.systemd:
+    name: systemd-exporter
+    state: restarted

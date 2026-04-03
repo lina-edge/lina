@@ -1,0 +1,30 @@
+---
+- name: Service environment files
+  ansible.builtin.template:
+    src: "{{ item.name }}.env.j2"
+    dest: "{{ lina_config_dir }}/{{ item.name }}.env"
+    owner: root
+    group: "{{ item.user }}"
+    mode: "0640"
+  loop: "{{ lina_services }}"
+  notify: Restart lina stack
+
+- name: Systemd units
+  ansible.builtin.template:
+    src: lina-service.service.j2
+    dest: "/etc/systemd/system/{{ item.name }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ lina_services }}"
+  notify:
+    - Reload systemd daemon
+    - Restart lina stack
+
+- name: Enable and start LINA services
+  ansible.builtin.systemd:
+    name: "{{ item.name }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  loop: "{{ lina_services }}"

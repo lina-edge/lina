@@ -1,0 +1,28 @@
+---
+- name: Install Redis
+  ansible.builtin.apt:
+    name: redis-server
+    state: present
+
+- name: Ensure Redis listens on loopback
+  ansible.builtin.lineinfile:
+    path: /etc/redis/redis.conf
+    regexp: '^\s*bind\s+'
+    line: 'bind 127.0.0.1 -::1'
+    backup: true
+  notify: Restart redis-server
+
+- name: Configure Redis password (optional)
+  ansible.builtin.lineinfile:
+    path: /etc/redis/redis.conf
+    regexp: '^\s*#?\s*requirepass\s+'
+    line: 'requirepass {{ lina_redis_password }}'
+    backup: true
+  when: (lina_redis_password | default('') | string | length) > 0
+  notify: Restart redis-server
+
+- name: Enable and start Redis
+  ansible.builtin.systemd:
+    name: redis-server
+    enabled: true
+    state: started

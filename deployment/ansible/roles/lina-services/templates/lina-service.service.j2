@@ -1,0 +1,23 @@
+[Unit]
+Description=LINA {{ item.name }}
+After={{ item.systemd_after }}
+{% if item.systemd_wants | default('') | length > 0 %}
+Wants={{ item.systemd_wants }}
+{% endif %}
+
+[Service]
+Type=simple
+User={{ item.user }}
+Group={{ item.user }}
+WorkingDirectory={{ lina_install_root }}
+EnvironmentFile={{ lina_config_dir }}/{{ item.name }}.env
+ExecStart={{ lina_install_root }}/bin/{{ item.binary }}
+Restart=always
+RestartSec=5
+
+NoNewPrivileges=true
+PrivateTmp=true
+ReadWritePaths={{ lina_lib_dir }}/{{ item.binary }}
+
+[Install]
+WantedBy=multi-user.target

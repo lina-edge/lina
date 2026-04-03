@@ -1,0 +1,8 @@
+# Local overrides: edit ansible_host, ansible_user, and lina_binaries_dir.
+# Do not commit secrets here; prefer ansible-vault on group_vars if needed.
+
+[edge]
+edge-node ansible_host=127.0.0.1 ansible_user=root
+
+[edge:vars]
+lina_binaries_dir=/absolute/path/to/lina/binaries

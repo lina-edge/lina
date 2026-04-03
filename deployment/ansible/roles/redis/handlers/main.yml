@@ -1,0 +1,5 @@
+---
+- name: Restart redis-server
+  ansible.builtin.systemd:
+    name: redis-server
+    state: restarted

@@ -1,0 +1,15 @@
+# Managed by Ansible — LINA edge (native)
+persistence true
+persistence_location /var/lib/mosquitto/
+
+{% if lina_mosquitto_tls_enable | bool %}
+listener {{ lina_mosquitto_tls_port | int }}
+protocol mqtt
+cafile {{ lina_mosquitto_cafile }}
+certfile {{ lina_mosquitto_certfile }}
+keyfile {{ lina_mosquitto_keyfile }}
+{% endif %}
+
+listener {{ lina_mosquitto_plain_port | int }}
+protocol mqtt
+allow_anonymous true

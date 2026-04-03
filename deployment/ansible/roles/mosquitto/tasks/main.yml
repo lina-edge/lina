@@ -1,0 +1,31 @@
+---
+- name: TLS requires cert paths
+  ansible.builtin.assert:
+    that:
+      - (lina_mosquitto_cafile | string | length) > 0
+      - (lina_mosquitto_certfile | string | length) > 0
+      - (lina_mosquitto_keyfile | string | length) > 0
+    fail_msg: "Set lina_mosquitto_cafile, lina_mosquitto_certfile, and lina_mosquitto_keyfile when lina_mosquitto_tls_enable is true."
+  when: lina_mosquitto_tls_enable | bool
+
+- name: Install Mosquitto
+  ansible.builtin.apt:
+    name:
+      - mosquitto
+      - mosquitto-clients
+    state: present
+
+- name: Deploy Mosquitto configuration
+  ansible.builtin.template:
+    src: mosquitto.conf.j2
+    dest: /etc/mosquitto/conf.d/99-lina.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart mosquitto
+
+- name: Enable and start Mosquitto
+  ansible.builtin.systemd:
+    name: mosquitto
+    enabled: true
+    state: started

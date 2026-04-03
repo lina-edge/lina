@@ -1,0 +1,29 @@
+---
+- name: Create LINA service users
+  ansible.builtin.user:
+    name: "{{ item.user }}"
+    system: true
+    create_home: false
+    shell: /usr/sbin/nologin
+  loop: "{{ lina_services }}"
+
+- name: Install root paths
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ lina_install_root }}"
+    - "{{ lina_install_root }}/bin"
+    - "{{ lina_config_dir }}"
+
+- name: Service data directories
+  ansible.builtin.file:
+    path: "{{ lina_lib_dir }}/{{ item.binary }}"
+    state: directory
+    owner: "{{ item.user }}"
+    group: "{{ item.user }}"
+    mode: "0700"
+  loop: "{{ lina_services }}"

@@ -1,0 +1,23 @@
+---
+- name: Validate control-side settings
+  hosts: edge
+  gather_facts: false
+  tasks:
+    - name: Ensure binary staging path is set
+      ansible.builtin.assert:
+        that:
+          - lina_binaries_dir is defined
+          - (lina_binaries_dir | string | length) > 0
+        fail_msg: >-
+          Set lina_binaries_dir in inventory (see inventory/hosts.example) to a directory
+          on this machine that contains the device, ledger, consumption, and lightning binaries.
+      run_once: true
+
+- name: Deploy LINA edge stack (native)
+  hosts: edge
+  roles:
+    - role: common
+    - role: redis
+    - role: mosquitto
+    - role: lina-services
+    - role: monitoring
