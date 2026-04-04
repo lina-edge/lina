@@ -18,18 +18,17 @@ lina_build_output_dir: ""
 # device, ledger, consumption, lightning binaries.
 lina_binaries_dir: ""
 
-lina_mosquitto_tls_enable: true
-lina_mosquitto_tls_port: 8883
-lina_mosquitto_plain_port: 1883
-# Dynamic Security + WebSockets: see roles/mosquitto/defaults/main.yml (lina_mosquitto_dynsec_*,
-# lina_mosquitto_websocket_*). Dynsec admin must match device-service env below.
-# Target paths (Ansible copies from controller; see lina_mosquitto_certs_src in mosquitto role defaults)
-lina_mosquitto_cert_dir: /etc/lina/mosquitto
-lina_mosquitto_cafile: /etc/lina/mosquitto/ca.crt
-lina_mosquitto_certfile: /etc/lina/mosquitto/server.crt
-lina_mosquitto_keyfile: /etc/lina/mosquitto/server.key
+lina_mqtt_broker_service_name: nanomq
+lina_nanomq_tls_enable: true
+lina_nanomq_tls_port: 8883
+lina_nanomq_plain_port: 1883
+# Target paths (Ansible copies from controller)
+lina_nanomq_cert_dir: /etc/lina/nanomq
+lina_nanomq_cafile: /etc/lina/nanomq/ca.crt
+lina_nanomq_certfile: /etc/lina/nanomq/server.crt
+lina_nanomq_keyfile: /etc/lina/nanomq/server.key
 # Controller: directory with ca.crt, server.crt, server.key (empty = <repo>/infrastructure/certs)
-lina_mosquitto_certs_src: ""
+lina_nanomq_certs_src: ""
 
 # Device MQTT client: use TLS to broker
 lina_mqtt_use_tls: true
@@ -51,18 +50,15 @@ lina_service_token: "change-me-in-production"
 lina_lnd_host: "192.168.2.1:10001"
 lina_lnd_tls_cert_hex: "2d2d2d2d2...."
 lina_lnd_tls_server_name: "localhost"
-lina_lnd_macaroon_hex: "0201036c6e640...
+lina_lnd_macaroon_hex: "0201036c6e640..."
 lina_lightning_network: "mainnet"
 
-# MQTT broker address (plain + TLS listeners; see lina_mosquitto_* above).
-# Docker Compose uses NanoMQ and device-service HTTP auth; this playbook still targets Mosquitto + dynsec.
+# MQTT broker address (plain + TLS listeners; see lina_nanomq_* above).
 lina_mqtt_broker: "127.0.0.1"
 
-# Device ↔ MQTT (must match mosquitto / dynsec provisioning on Ansible-deployed edges)
+# Device ↔ MQTT
 lina_device_mqtt_username: "device-service"
 lina_device_mqtt_password: "device-service_password"
-lina_mqtt_dynsec_admin_user: "dynsec_admin"
-lina_mqtt_dynsec_admin_password: "dynsec_admin_password"
 
 # Northbound HTTP APIs: bind loopback only; external access is via Caddy (lina_caddy_listen).
 # Device REST must not use Caddy's public port (8080).

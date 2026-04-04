@@ -57,7 +57,7 @@ Services:
 Install via package manager (apt):
 
 - Redis (redis-server)
-- MQTT broker (mosquitto)
+- MQTT broker (nanomq)
 
 Ensure:
 
@@ -94,7 +94,7 @@ Each service must have:
 Define dependencies where appropriate:
 
 - ledger-service → after redis
-- device-service → after mosquitto
+- device-service → after nanomq
 - consumption-service → after ledger-service
 - lightning-service → after network
 
@@ -125,7 +125,7 @@ Install process-exporter:
   - ledger-service
   - consumption-service
   - lightning-service
-  - mosquitto
+  - nanomq
   - redis-server
 
 - Config file: `/etc/process-exporter/config.yml`
@@ -201,7 +201,7 @@ The generated Ansible project must include:
   - lina-services/
   - monitoring/
   - redis/
-  - mosquitto/
+  - nanomq/
 
 ---
 
@@ -221,7 +221,7 @@ The generated Ansible project must include:
 #### Install Dependencies
 
 - Install redis-server
-- Install mosquitto
+- Install nanomq
 
 ---
 

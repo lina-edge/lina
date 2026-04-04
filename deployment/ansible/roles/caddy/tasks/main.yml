@@ -33,7 +33,7 @@
       deb [signed-by=/usr/share/keyrings/caddy-stable-archive-keyring.gpg] https://dl.cloudsmith.io/public/caddy/stable/deb/{{ lina_caddy_cloudsmith_distro }} any-version main
     mode: "0644"
   vars:
-    lina_caddy_cloudsmith_distro: "{{ 'ubuntu' if ansible_distribution == 'Ubuntu' else 'debian' }}"
+    lina_caddy_cloudsmith_distro: "{{ 'ubuntu' if ansible_facts['distribution'] == 'Ubuntu' else 'debian' }}"
 
 - name: Install Caddy
   ansible.builtin.apt:

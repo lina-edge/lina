@@ -21,5 +21,5 @@ lina_services:
   - name: device-service
     binary: device
     user: lina-device
-    systemd_after: "network-online.target mosquitto.service redis-server.service ledger-service.service lightning-service.service"
-    systemd_wants: "mosquitto.service redis-server.service ledger-service.service lightning-service.service"
+    systemd_after: "network-online.target {{ lina_mqtt_broker_service_name | default('nanomq') }}.service redis-server.service ledger-service.service lightning-service.service"
+    systemd_wants: "{{ lina_mqtt_broker_service_name | default('nanomq') }}.service redis-server.service ledger-service.service lightning-service.service"

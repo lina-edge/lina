@@ -1,0 +1,16 @@
+---
+# If non-empty, must be an absolute path to the nanomq binary; otherwise role searches /usr/bin and /usr/local/bin.
+lina_nanomq_binary: ""
+lina_nanomq_conf_path: /etc/lina/nanomq.conf
+lina_nanomq_tls_enable: true
+lina_nanomq_tls_port: 8883
+lina_nanomq_plain_port: 1883
+lina_nanomq_cert_dir: /etc/lina/nanomq
+lina_nanomq_cafile: /etc/lina/nanomq/ca.crt
+lina_nanomq_certfile: /etc/lina/nanomq/server.crt
+lina_nanomq_keyfile: /etc/lina/nanomq/server.key
+lina_nanomq_certs_src: ""
+lina_nanomq_websocket_plain_enable: true
+lina_nanomq_websocket_plain_port: 9001
+lina_nanomq_websocket_tls_enable: true
+lina_nanomq_websocket_tls_port: 9002

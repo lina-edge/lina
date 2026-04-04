@@ -1,0 +1,87 @@
+# Managed by Ansible - aligned with infrastructure/nanomq/nanomq.conf.template
+
+system {
+  daemon = false
+}
+
+listeners.tcp {
+  bind = "0.0.0.0:{{ lina_nanomq_plain_port | int }}"
+}
+
+listeners.ssl {
+  enable = {{ (lina_nanomq_tls_enable | default(false) | bool) | lower }}
+  bind = "0.0.0.0:{{ lina_nanomq_tls_port | int }}"
+  keyfile = "{{ lina_nanomq_keyfile }}"
+  certfile = "{{ lina_nanomq_certfile }}"
+  cacertfile = "{{ lina_nanomq_cafile }}"
+  verify_peer = false
+  fail_if_no_peer_cert = false
+  tls_version = tlsv1.2
+}
+
+http_server {
+  port = {{ lina_nanomq_http_port | default(8881) | int }}
+  parallel = {{ lina_nanomq_http_parallel | default(2) | int }}
+  username = {{ lina_nanomq_http_username | default('admin') }}
+  password = {{ lina_nanomq_http_password | default('public') }}
+  auth_type = basic
+}
+
+log {
+  to = [console]
+  level = {{ lina_nanomq_log_level | default('warn') }}
+}
+
+# Authentication: NanoMQ calls device-service HTTP endpoints to verify credentials.
+auth {
+  allow_anonymous = false
+  no_match = deny
+  deny_action = disconnect
+
+  http_auth = {
+    auth_req {
+      url = "{{ lina_nanomq_device_service_http_auth_url | default('http://127.0.0.1:8084') }}/api/v1/mqtt/auth"
+      method = "POST"
+      headers.content-type = "application/x-www-form-urlencoded"
+      params = {clientid = "%c", username = "%u", password = "%P"}
+    }
+
+    super_req {
+      url = "{{ lina_nanomq_device_service_http_auth_url | default('http://127.0.0.1:8084') }}/api/v1/mqtt/super"
+      method = "POST"
+      headers.content-type = "application/x-www-form-urlencoded"
+      params = {clientid = "%c", username = "%u"}
+    }
+
+    acl_req {
+      url = "{{ lina_nanomq_device_service_http_auth_url | default('http://127.0.0.1:8084') }}/api/v1/mqtt/acl"
+      method = "POST"
+      headers.content-type = "application/x-www-form-urlencoded"
+      params = {clientid = "%c", username = "%u", access = "%A", topic = "%t"}
+    }
+
+    timeout = {{ lina_nanomq_http_auth_timeout | default('5s') }}
+    connect_timeout = {{ lina_nanomq_http_auth_connect_timeout | default('5s') }}
+    pool_size = {{ lina_nanomq_http_auth_pool_size | default(32) | int }}
+    cache_ttl = {{ lina_nanomq_http_auth_cache_ttl | default('60s') }}
+  }
+}
+
+# Per-message topic ACL using ${username} placeholder.
+authorization {
+  no_match = deny
+  deny_action = disconnect
+  sources = [
+    {
+      type = file
+      rules = [
+        {"permit": "deny",  "username": "#", "action": "subscribe", "topics": ["$SYS/#"]}
+        {"permit": "allow", "username": "{{ lina_device_mqtt_username | default('device-service') }}", "action": "subscribe", "topics": ["/devices/+/heartbeat", "/devices/+/usage", "/devices/+/request/authorize", "/devices/+/request/invoice"]}
+        {"permit": "allow", "username": "{{ lina_device_mqtt_username | default('device-service') }}", "action": "publish",   "topics": ["/devices/+/response/authorize", "/devices/+/response/invoice", "/devices/+/events/invoice", "/devices/+/config", "/devices/+/control", "/devices/+/balance"]}
+        {"permit": "allow", "username": "#", "action": "publish",   "topics": ["/devices/${username}/heartbeat", "/devices/${username}/usage", "/devices/${username}/request/authorize", "/devices/${username}/request/invoice"]}
+        {"permit": "allow", "username": "#", "action": "subscribe", "topics": ["/devices/${username}/#"]}
+        {"permit": "deny"}
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Native edge deployment (Ansible)
 
-Installs the LINA edge stack on a Debian-based host **without Docker**: `redis-server`, `mosquitto`, four Go services under systemd, and Prometheus-style exporters (node, process, redis, optional systemd).
+Installs the LINA edge stack on a Debian-based host **without Docker**: `redis-server`, MQTT broker settings aligned to NanoMQ variables, four Go services under systemd, and Prometheus-style exporters (node, process, redis, optional systemd).
 
 Layout matches `ansible.md` at the repo root (`/opt/lina/bin`, `/etc/lina`, `/var/lib/lina`, journald logging).
 
@@ -40,9 +40,9 @@ Ansible loads `ansible.cfg` here, including `inventory/hosts` and `roles/`.
 - Redis exporter: **9461** (`lina_redis_exporter_listen`; matches Docker `9461:9121`).
 - Systemd exporter (optional): **9558** (Linux host / D-Bus; same as evaluation edge compose when enabled).
 
-**TLS** for Mosquitto is **on** by default (`8883`): Ansible copies `ca.crt`, `server.crt`, and `server.key` from **`infrastructure/certs`** on the controller (run `infrastructure/certs/generate-certs.sh` first) or from **`lina_mosquitto_certs_src`** if you set it. Plain MQTT is on **1883**. With **`lina_mosquitto_dynsec_enable: true`** (default), the broker loads **`mosquitto_dynamic_security.so`**, keeps **`allow_anonymous false`**, and initializes **`/var/lib/mosquitto/dynamic-security.json`** via `mosquitto_ctrl dynsec init` using **`lina_mqtt_dynsec_admin_user`** / **`lina_mqtt_dynsec_admin_password`** (must match device-service). WebSocket listeners default to **9001** (plain) and **9002** (TLS when TLS is enabled), like `infrastructure/mosquitto/config/mosquitto.conf`. Set **`lina_mosquitto_dynsec_enable: false`** only for lab anonymous access. For real certificates, set `lina_mqtt_tls_skip_verify: false` and `lina_mqtt_tls_server_name` as needed in `inventory/group_vars/all.yml`.
+**TLS** for MQTT is **on** by default (`8883`): Ansible copies `ca.crt`, `server.crt`, and `server.key` from **`infrastructure/certs`** on the controller (run `infrastructure/certs/generate-certs.sh` first) or from **`lina_nanomq_certs_src`** if you set it. Plain MQTT is on **1883**. WebSocket listeners default to **9001** (plain) and **9002** (TLS when TLS is enabled). For real certificates, set `lina_mqtt_tls_skip_verify: false` and `lina_mqtt_tls_server_name` as needed in `inventory/group_vars/all.yml`.
 
-The **mosquitto** role comments out stock `listener` / deprecated `port` lines and `persistence` / `persistence_location` in `/etc/mosquitto/mosquitto.conf` and in other `conf.d/*.conf` files (except `99-lina.conf`), then defines listeners and persistence only in `99-lina.conf`. If the broker still fails to start, run `journalctl -xeu mosquitto.service` on the target.
+The broker role applies a single managed MQTT config (`99-lina.conf`) and listener settings from inventory variables. If the broker still fails to start, run `journalctl -xeu {{ lina_mqtt_broker_service_name }}.service` on the target.
 
 ## Roles
 
@@ -50,6 +50,6 @@ The **mosquitto** role comments out stock `listener` / deprecated `port` lines a
 |----------------|--------------------------------------------------------|
 | `common`       | apt update, base packages                              |
 | `redis`        | `redis-server`, loopback bind, optional password       |
-| `mosquitto`    | broker + `/etc/mosquitto/conf.d/99-lina.conf`          |
+| `nanomq`       | broker config via NanoMQ-oriented variables             |
 | `lina-services`| users, binaries, `/etc/lina/*.env`, systemd units      |
 | `monitoring`   | `prometheus-node-exporter` (apt), process/redis/systemd exporters |

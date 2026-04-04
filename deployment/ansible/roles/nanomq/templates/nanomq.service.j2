@@ -1,0 +1,19 @@
+# Managed by Ansible — the EMQX apt package does not ship a systemd unit; docs use `nanomq start`.
+[Unit]
+Description=NanoMQ MQTT broker (LINA)
+Documentation=https://nanomq.io/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart={{ lina_nanomq_executable }} start --conf {{ lina_nanomq_conf_path }}
+Restart=on-failure
+RestartSec=5
+# PID/state under /tmp/nanomq (see broker defaults)
+RuntimeDirectory=nanomq
+RuntimeDirectoryMode=0755
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target

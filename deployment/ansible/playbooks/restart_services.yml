@@ -4,14 +4,14 @@
 # Examples (from deployment/ansible/):
 #   ansible-playbook playbooks/restart_services.yml
 #   ansible-playbook playbooks/restart_services.yml -e lina_restart_services='["device-service"]'
-#   ansible-playbook playbooks/restart_services.yml -e lina_restart_services='["mosquitto","device-service"]'
-#   ansible-playbook playbooks/restart_services.yml -e lina_mosquitto_systemd_state=restarted
+#   ansible-playbook playbooks/restart_services.yml -e lina_restart_services='["nanomq","device-service"]'
+#   ansible-playbook playbooks/restart_services.yml -e lina_mqtt_broker_systemd_state=restarted
 #   ansible-playbook playbooks/restart_services.yml -e '{"lina_restart_extra_services":["redis-server","caddy"]}'
-#   ansible-playbook playbooks/restart_services.yml --tags mosquitto
+#   ansible-playbook playbooks/restart_services.yml --tags broker
 #   ansible-playbook playbooks/restart_services.yml --tags lina-services
 #   ansible-playbook playbooks/restart_services.yml --tags extra
 #
-# Default: reload mosquitto + restart all LINA Go services (ledger, lightning, consumption, device).
+# Default: reload MQTT broker + restart all LINA Go services (ledger, lightning, consumption, device).
 # Override lina_restart_services with a YAML list (see above). Use lina_restart_extra_services for
 # redis-server, caddy, exporters, etc.
 
@@ -21,22 +21,23 @@
   vars_files:
     - ../roles/lina-services/defaults/main.yml
   vars:
-    # Default = mosquitto + every unit in lina_services (from vars_files)
-    lina_restart_services: "{{ ['mosquitto'] + (lina_services | map(attribute='name') | list) }}"
-    # Mosquitto: reloaded applies config where the unit supports ExecReload; use restarted if reload fails
-    lina_mosquitto_systemd_state: reloaded
+    lina_mqtt_broker_service_name: "{{ lina_mqtt_broker_service_name | default('nanomq') }}"
+    # Default = MQTT broker + every unit in lina_services (from vars_files)
+    lina_restart_services: "{{ [lina_mqtt_broker_service_name] + (lina_services | map(attribute='name') | list) }}"
+    # Broker: reloaded applies config where the unit supports ExecReload; use restarted if reload fails
+    lina_mqtt_broker_systemd_state: reloaded
     lina_restart_extra_services: []
 
   tasks:
-    - name: Reload Mosquitto broker
+    - name: Reload MQTT broker
       ansible.builtin.systemd:
-        name: mosquitto
-        state: "{{ lina_mosquitto_systemd_state }}"
-      when: "'mosquitto' in lina_restart_services"
+        name: "{{ lina_mqtt_broker_service_name }}"
+        state: "{{ lina_mqtt_broker_systemd_state }}"
+      when: lina_mqtt_broker_service_name in lina_restart_services
       tags:
-        - mosquitto
-        - mqtt
         - broker
+        - mqtt
+        - nanomq
 
     - name: Restart LINA application services
       ansible.builtin.systemd:

@@ -1,0 +1,137 @@
+---
+- name: Resolve TLS certificate source on controller
+  ansible.builtin.set_fact:
+    lina_nanomq_effective_certs_src: >-
+      {{ lina_nanomq_certs_src
+         if (lina_nanomq_certs_src | default('') | length) > 0
+         else (playbook_dir | dirname | dirname | dirname ~ '/infrastructure/certs') }}
+  when: lina_nanomq_tls_enable | default(false) | bool
+  run_once: true
+  delegate_to: localhost
+  become: false
+
+- name: Verify TLS cert files exist on controller
+  ansible.builtin.stat:
+    path: "{{ lina_nanomq_effective_certs_src }}/{{ item }}"
+  loop:
+    - ca.crt
+    - server.crt
+    - server.key
+  register: lina_nanomq_tls_cert_stat
+  when: lina_nanomq_tls_enable | default(false) | bool
+  run_once: true
+  delegate_to: localhost
+  become: false
+
+- name: Fail if TLS cert missing on controller
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists
+    fail_msg: >-
+      Missing {{ lina_nanomq_effective_certs_src }}/{{ item.item }} —
+      run infrastructure/certs/generate-certs.sh or set lina_nanomq_certs_src.
+  loop: "{{ lina_nanomq_tls_cert_stat.results }}"
+  when: lina_nanomq_tls_enable | default(false) | bool
+  run_once: true
+  loop_control:
+    label: "{{ item.item }}"
+
+- name: Remove legacy NanoMQ apt source
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/emqx_nanomq.list
+    state: absent
+  become: true
+
+- name: Bootstrap NanoMQ repository with EMQX installer
+  ansible.builtin.shell:
+    cmd: curl -fsSL https://assets.emqx.com/scripts/install-nanomq-deb.sh | bash
+    executable: /bin/bash
+  become: true
+
+- name: Install NanoMQ (full edition)
+  ansible.builtin.command:
+    argv:
+      - apt-get
+      - install
+      - -y
+      - nanomq
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  register: lina_nanomq_install
+  changed_when: >-
+    'already the newest version' not in (lina_nanomq_install.stdout | default(''))
+  become: true
+
+# The Debian package from EMQX installs the binary but does not register a systemd unit (see nanomq.io Linux packages).
+- name: Resolve nanomq executable path
+  ansible.builtin.shell: |
+    set -e
+    {% if lina_nanomq_binary | default('') | length > 0 %}
+    if [ -x "{{ lina_nanomq_binary }}" ]; then echo "{{ lina_nanomq_binary }}"; exit 0; fi
+    echo "lina_nanomq_binary is set but not executable: {{ lina_nanomq_binary }}" >&2
+    exit 1
+    {% else %}
+    for p in /usr/bin/nanomq /usr/local/bin/nanomq; do
+      if [ -x "$p" ]; then echo "$p"; exit 0; fi
+    done
+    echo "nanomq binary not found (apt install nanomq)." >&2
+    exit 1
+    {% endif %}
+  args:
+    executable: /bin/bash
+  register: lina_nanomq_exec_res
+  changed_when: false
+  become: true
+
+- name: Set nanomq executable fact
+  ansible.builtin.set_fact:
+    lina_nanomq_executable: "{{ lina_nanomq_exec_res.stdout | trim }}"
+
+- name: Create NanoMQ TLS directory on target
+  ansible.builtin.file:
+    path: "{{ lina_nanomq_cert_dir }}"
+    state: directory
+    owner: root
+    mode: "0755"
+  when: lina_nanomq_tls_enable | default(false) | bool
+
+- name: Copy TLS certificates for NanoMQ
+  ansible.builtin.copy:
+    src: "{{ lina_nanomq_effective_certs_src }}/{{ item }}"
+    dest: "{{ lina_nanomq_cert_dir }}/{{ item }}"
+    owner: root
+    group: root
+    mode: "{{ '0600' if item == 'server.key' else '0644' }}"
+  loop:
+    - ca.crt
+    - server.crt
+    - server.key
+  when: lina_nanomq_tls_enable | default(false) | bool
+
+- name: Deploy NanoMQ configuration snippet
+  ansible.builtin.template:
+    src: nanomq.conf.j2
+    dest: "{{ lina_nanomq_conf_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart nanomq
+
+- name: Install NanoMQ systemd unit
+  ansible.builtin.template:
+    src: nanomq.service.j2
+    dest: /etc/systemd/system/nanomq.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Apply systemd unit changes before first start
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start NanoMQ
+  ansible.builtin.systemd:
+    name: nanomq
+    enabled: true
+    state: started
+    daemon_reload: true
