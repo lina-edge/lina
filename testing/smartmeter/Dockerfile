@@ -2,7 +2,7 @@
 FROM node:22-alpine AS ui-build
     WORKDIR /app/ui
     COPY testing/smartmeter/ui/package.json testing/smartmeter/ui/package-lock.json* ./
-    RUN npm install
+    RUN --mount=type=cache,target=/root/.npm npm install
     COPY testing/smartmeter/ui .
     RUN npm run build
 
