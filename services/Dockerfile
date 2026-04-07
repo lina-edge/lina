@@ -15,14 +15,20 @@ FROM golang:1.25-alpine AS builder
 
     # Copy target service files
     COPY services/${SERVICE}/go.mod services/${SERVICE}/go.sum ./services/${SERVICE}/
+
     WORKDIR /workspace/services/${SERVICE}
-    RUN --mount=type=cache,target=/go/pkg/mod go mod download
+
+    RUN --mount=type=cache,target=/go/pkg/mod,id=gomodcache \
+    --mount=type=cache,target=/root/.cache/go-build,id=gobuildcache \
+    go mod download
 
     # Copy target service source code
     COPY services/${SERVICE} ./
 
     # Build the target service
-    RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o ${SERVICE} .
+    RUN --mount=type=cache,target=/go/pkg/mod,id=gomodcache \
+    --mount=type=cache,target=/root/.cache/go-build,id=gobuildcache \
+    CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o ${SERVICE} .
 
 # Final Stage
 FROM alpine:3.23
@@ -38,4 +44,4 @@ FROM alpine:3.23
 
     EXPOSE 8080
 
-    CMD ./${APP}
+    CMD ["sh", "-c", "./${APP}"]

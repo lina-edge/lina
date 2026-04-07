@@ -18,13 +18,18 @@ FROM golang:1.25-alpine AS builder
     # Copy httpdevices files
     COPY testing/loadtest/httpdevices/go.mod testing/loadtest/httpdevices/go.sum ./testing/loadtest/httpdevices/
     WORKDIR /workspace/testing/loadtest/httpdevices
-    RUN go mod download
+    
+    RUN --mount=type=cache,target=/go/pkg/mod,id=gomodcache \
+    --mount=type=cache,target=/root/.cache/go-build,id=gobuildcache \
+    go mod download
 
     # Copy httpdevices source code
     COPY testing/loadtest/httpdevices/*.go ./
 
     # Build the httpdevices application
-    RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o httpdevices .
+    RUN --mount=type=cache,target=/go/pkg/mod,id=gomodcache \
+    --mount=type=cache,target=/root/.cache/go-build,id=gobuildcache \
+    CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o httpdevices .
 
 # Final Stage
 FROM alpine:3.23

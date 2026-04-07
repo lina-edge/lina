@@ -2,7 +2,7 @@
 FROM node:22-alpine AS ui-build
     WORKDIR /app/ui
     COPY testing/smartmeter/ui/package.json testing/smartmeter/ui/package-lock.json* ./
-    RUN --mount=type=cache,target=/root/.npm npm install
+    RUN --mount=type=cache,target=/root/.npm,id=npm-cache npm ci
     COPY testing/smartmeter/ui .
     RUN npm run build
 
@@ -25,13 +25,17 @@ FROM golang:1.25-alpine AS core-builder
     # Copy Smart Meter Core files
     COPY testing/smartmeter/core/go.mod testing/smartmeter/core/go.sum ./testing/smartmeter/core/
     WORKDIR /workspace/testing/smartmeter/core
-    RUN --mount=type=cache,target=/go/pkg/mod go mod download
+    RUN --mount=type=cache,target=/go/pkg/mod,id=gomodcache \
+    --mount=type=cache,target=/root/.cache/go-build,id=gobuildcache \
+    go mod download
 
     # Copy Smart Meter Core source code
     COPY testing/smartmeter/core/*.go ./
 
     # Build Smart Meter Core application
-    RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o smartmeter .
+    RUN --mount=type=cache,target=/go/pkg/mod,id=gomodcache \
+    --mount=type=cache,target=/root/.cache/go-build,id=gobuildcache \
+    CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o smartmeter .
 
 # Smart Meter Runtime
 FROM alpine:3.23

@@ -6,3 +6,14 @@
 *.log
 .env*
 .DS_Store
+.git
+.gitignore
+**/.DS_Store
+**/tmp
+**/temp
+**/bin
+**/dist
+**/coverage
+**/*.log
+**/.env
+**/node_modules
