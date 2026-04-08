@@ -123,6 +123,8 @@ export function setup() {
 
   let registered = 0;
   if (batchRes.status === 204) {
+    // Device service republishes retained MQTT config for this batch on 204 (so /devices/<id>/config exists
+    // again after broker restart, etc.). MQTT Explorer: subscribe to /devices/k6_device_000001/config, not plain "config".
     console.log(`Batch already exists (204 No Content) - all ${VUsCount} devices are already registered`);
     registered = VUsCount;
   } else if (batchRes.status === 201) {

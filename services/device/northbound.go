@@ -306,6 +306,23 @@ func (nb *NorthboundInterface) publishDeviceConfigsInParallel(ctx context.Contex
 	return int(ok.Load())
 }
 
+// publishDeviceConfigBatches publishes retained MQTT config for devices in chunks of batchSize.
+func (nb *NorthboundInterface) publishDeviceConfigBatches(ctx context.Context, devices []*Device, batchSize int) {
+	if batchSize <= 0 {
+		batchSize = 1000
+	}
+	logger.Infof(ctx, "Publishing configs for %d devices", len(devices))
+	for i := 0; i < len(devices); i += batchSize {
+		end := i + batchSize
+		if end > len(devices) {
+			end = len(devices)
+		}
+		batch := devices[i:end]
+		pageOK := nb.publishDeviceConfigsInParallel(ctx, batch)
+		logger.Infof(ctx, "Published configs for device batch %d-%d (%d/%d succeeded)", i, end-1, pageOK, len(batch))
+	}
+}
+
 // RepublishAllDeviceConfigs republishes the configuration for all devices in the repository.
 // This is useful at service startup to ensure retained config messages exist in MQTT.
 func (nb *NorthboundInterface) RepublishAllDeviceConfigs(ctx context.Context) error {
@@ -418,7 +435,27 @@ func (nb *NorthboundInterface) createDevicesBatch(c *gin.Context) {
 	}
 
 	if batchExists {
-		logger.Infof(ctx, "Batch already exists for pattern %s, idStart=%d, idEnd=%d, returning 204", req.DeviceIDPattern, idStart, idEnd)
+		// Devices are in DB but MQTT retained config may be missing (broker restart, earlier publish
+		// failure, or DB restored without MQTT). Republish so subscribers get /devices/{id}/config.
+		logger.Infof(ctx, "Batch already exists for pattern %s, idStart=%d, idEnd=%d, republishing MQTT configs then returning 204", req.DeviceIDPattern, idStart, idEnd)
+		deviceIDs := make([]string, 0, totalDevices)
+		for id := idStart; id <= idEnd; id++ {
+			idStr := fmt.Sprintf("%0*d", req.IDPadding, id)
+			deviceIDs = append(deviceIDs, strings.ReplaceAll(req.DeviceIDPattern, "{id}", idStr))
+		}
+		existing, err := nb.repo.ListDevicesByIDs(ctx, deviceIDs)
+		if err != nil {
+			logger.Errorf(ctx, "Failed to load devices for batch config republish: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": fmt.Sprintf("failed to load devices for config republish: %v", err),
+			})
+			return
+		}
+		if len(existing) != len(deviceIDs) {
+			logger.Warnf(ctx, "Batch exists: loaded %d/%d devices from DB for config republish", len(existing), len(deviceIDs))
+		}
+		const batchSize = 1000
+		nb.publishDeviceConfigBatches(ctx, existing, batchSize)
 		c.Status(http.StatusNoContent)
 		return
 	}
@@ -488,16 +525,7 @@ func (nb *NorthboundInterface) createDevicesBatch(c *gin.Context) {
 	logger.Infof(ctx, "Stored credentials for %d devices", totalDevices)
 
 	// Publish device configurations in batches
-	logger.Infof(ctx, "Publishing configs for %d devices", totalDevices)
-	for i := 0; i < len(devices); i += batchSize {
-		end := i + batchSize
-		if end > len(devices) {
-			end = len(devices)
-		}
-		batch := devices[i:end]
-		pageOK := nb.publishDeviceConfigsInParallel(ctx, batch)
-		logger.Infof(ctx, "Published configs for device batch %d-%d (%d/%d succeeded)", i, end-1, pageOK, len(batch))
-	}
+	nb.publishDeviceConfigBatches(ctx, devices, batchSize)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message":         "batch creation initiated",

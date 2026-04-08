@@ -357,6 +357,90 @@ func (r *DeviceRepository) BatchExists(ctx context.Context, idStart, idEnd, idPa
 	return exists, nil
 }
 
+// sqliteMaxQueryParams keeps IN (?) lists under SQLite's default bind variable limit (999).
+const sqliteMaxQueryParams = 500
+
+// ListDevicesByIDs returns devices for the given IDs. Missing IDs are omitted (no error).
+func (r *DeviceRepository) ListDevicesByIDs(ctx context.Context, deviceIDs []string) ([]*Device, error) {
+	if len(deviceIDs) == 0 {
+		return nil, nil
+	}
+
+	var out []*Device
+	for i := 0; i < len(deviceIDs); i += sqliteMaxQueryParams {
+		end := i + sqliteMaxQueryParams
+		if end > len(deviceIDs) {
+			end = len(deviceIDs)
+		}
+		chunk := deviceIDs[i:end]
+		devices, err := r.listDevicesByIDsChunk(ctx, chunk)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, devices...)
+	}
+	return out, nil
+}
+
+func (r *DeviceRepository) listDevicesByIDsChunk(ctx context.Context, deviceIDs []string) ([]*Device, error) {
+	placeholders := make([]string, len(deviceIDs))
+	args := make([]interface{}, len(deviceIDs))
+	for i, id := range deviceIDs {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	query := fmt.Sprintf(`
+	SELECT device_id, measurement_unit, unit_price_msat, reporting_strategy,
+	       reporting_interval, heartbeat_interval, authorize_request_msat, timestamp
+	FROM devices
+	WHERE device_id IN (%s)`, strings.Join(placeholders, ","))
+
+	attrs := []attribute.KeyValue{
+		attribute.String("db.operation", "SELECT"),
+		attribute.String("db.table", "devices"),
+		attribute.Int("batch.size", len(deviceIDs)),
+	}
+	rows, err := r.sqlTracer.QueryWithSpan(ctx, "[repository] list devices by ids", attrs, r.db, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query devices by ids: %w", err)
+	}
+	defer rows.Close()
+
+	var devices []*Device
+	for rows.Next() {
+		var device Device
+		var timestampStr string
+
+		err := rows.Scan(
+			&device.DeviceID,
+			&device.MeasurementUnit,
+			&device.UnitPriceMsat,
+			&device.ReportingStrategy,
+			&device.ReportingInterval,
+			&device.HeartbeatInterval,
+			&device.AuthorizeRequestMsat,
+			&timestampStr,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan device: %w", err)
+		}
+
+		device.Timestamp, err = time.Parse(time.RFC3339, timestampStr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse timestamp: %w", err)
+		}
+
+		devices = append(devices, &device)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating devices: %w", err)
+	}
+
+	return devices, nil
+}
+
 // CreateDevicesBatch inserts multiple devices in a single transaction
 // Uses INSERT OR IGNORE to skip devices that already exist
 func (r *DeviceRepository) CreateDevicesBatch(ctx context.Context, devices []*Device) error {
