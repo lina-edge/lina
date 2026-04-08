@@ -114,9 +114,11 @@ func (s *MQTTAuthServer) handleACL(c *gin.Context) {
 		return
 	}
 
-	// Devices may only access their own /devices/{username}/... subtree.
-	ownPrefix := "/devices/" + username + "/"
-	if strings.HasPrefix(topic, ownPrefix) || topic == "/devices/"+username {
+	// Devices may only access their own devices/{username}/... subtree. Clients and NanoMQ's
+	// HTTP ACL placeholder %t may use either "devices/..." or "/devices/..."; normalize so both match.
+	topicNorm := strings.TrimPrefix(topic, "/")
+	ownPrefix := "devices/" + username + "/"
+	if strings.HasPrefix(topicNorm, ownPrefix) || topicNorm == "devices/"+username {
 		c.Status(http.StatusOK)
 		return
 	}
