@@ -117,7 +117,7 @@ services:
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - DB_PATH=/data/consumption.db
+      - DB_PATH=/data/consumption-pebble
       # Disable OpenTelemetry
       - OTEL_EXPORTER_OTLP_ENDPOINT=
       - OTEL_SERVICE_NAME=consumption-service

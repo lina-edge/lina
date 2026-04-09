@@ -254,6 +254,10 @@ func (di *deviceInterfaceImpl) Connect(deviceID, deviceSecret string) {
 		},
 		Hooks: &internal.MQTTSessionHooks{
 			OnConnect: func(client mqtt.Client) {
+				// Paho invokes OnConnect before Connect()'s token completes and before
+				// DialMQTT returns, so di.mqttClient is not assigned yet — set it here
+				// before subscribeToTopics uses it.
+				di.mqttClient = client
 				di.setMQTTStatus("connected")
 				di.callbacks.OnMQTTStatus("connected")
 				di.callbacks.OnLog("Connected to MQTT broker", "success")

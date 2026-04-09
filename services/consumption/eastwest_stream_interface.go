@@ -20,15 +20,16 @@ type messageRetryInfo struct {
 	firstSeenAt time.Time
 }
 
-// isDatabaseLockError checks if an error is a SQLite database lock error
-func isDatabaseLockError(err error) bool {
+// isTransientPersistenceError reports errors that may resolve on retry (e.g. storage contention).
+func isTransientPersistenceError(err error) bool {
 	if err == nil {
 		return false
 	}
 	errStr := strings.ToLower(err.Error())
 	return strings.Contains(errStr, "database is locked") ||
 		strings.Contains(errStr, "sqlite_busy") ||
-		strings.Contains(errStr, "sqlite: database is locked")
+		strings.Contains(errStr, "sqlite: database is locked") ||
+		strings.Contains(errStr, "resource temporarily unavailable")
 }
 
 // EastWestStreamInterface wraps the internal StreamClient with consumption-specific methods for east-west stream communication
@@ -253,9 +254,9 @@ func (ewsi *EastWestStreamInterface) startPendingMessageRetry(ctx context.Contex
 				err := internal.TraceEventProcessing(streamCtx, streamName, msg, handlerFn, ackFn)
 				if err != nil {
 					// Check if it's a database lock error
-					if isDatabaseLockError(err) {
+					if isTransientPersistenceError(err) {
 						logger.WithStream(streamName, "consume").
-							Warnf(streamCtx, "Database lock error on retry for message %s: %v (will retry later)", msg.ID, err)
+							Warnf(streamCtx, "Transient persistence error on retry for message %s: %v (will retry later)", msg.ID, err)
 					} else {
 						logger.WithStream(streamName, "consume").
 							Errorf(streamCtx, "Error handling retry event %s: %v", msg.ID, err)

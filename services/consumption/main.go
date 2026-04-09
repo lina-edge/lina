@@ -45,7 +45,7 @@ func main() {
 		}()
 	}
 
-	repository, err := NewConsumptionRepository(cfg.DBPath, cfg.BusyTimeoutMS)
+	repository, err := NewConsumptionRepository(cfg.DBPath)
 	if err != nil {
 		logger.Fatal(ctx, "Failed to create consumption repository", err)
 	}

@@ -21,7 +21,8 @@ var (
 type EastWestStreamHandler struct {
 	repository *ConsumptionRepository
 	publisher  *EastWestStreamPublisher
-	// persistMu serializes SQLite debit transactions so the main consumer and retry loop do not contend on the writer lock.
+	// persistMu makes CreateConsumptionRecord's Get-then-Batch idempotency atomic: Pebble is thread-safe,
+	// but concurrent handlers could both observe a missing report_id and return inserted=true (duplicate publish).
 	persistMu sync.Mutex
 }
 
@@ -72,20 +73,7 @@ func (esh *EastWestStreamHandler) HandleUsageReported(ctx context.Context, usage
 		esh.persistMu.Lock()
 		defer esh.persistMu.Unlock()
 
-		tx, err := esh.repository.BeginTx(ctx, nil)
-		if err != nil {
-			return false, fmt.Errorf("failed to begin transaction: %w", err)
-		}
-		defer func() { _ = tx.Rollback() }()
-
-		inserted, err := esh.repository.CreateConsumptionRecord(ctx, tx, reportID, deviceID, debitMsat, fractionalMsat, measure, pricePerUnitMsat, usage.GetUnit(), usage.GetTimestamp(), carrier)
-		if err != nil {
-			return false, err
-		}
-		if err := tx.Commit(); err != nil {
-			return false, fmt.Errorf("failed to commit transaction: %w", err)
-		}
-		return inserted, nil
+		return esh.repository.CreateConsumptionRecord(ctx, reportID, deviceID, debitMsat, fractionalMsat, measure, pricePerUnitMsat, usage.GetUnit(), usage.GetTimestamp(), carrier)
 	}()
 	if err != nil {
 		return err
