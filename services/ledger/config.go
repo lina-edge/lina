@@ -32,7 +32,7 @@ func LoadConfig() Config {
 
 		StreamConsumerName:       internal.GetEnv("REDIS_STREAM_CONSUMER_NAME", "ledger-service"),
 		ConsumeParallelism:       internal.IntEnv("LEDGER_STREAM_PARALLELISM", 4),
-		StreamPerMessageInfoLogs: internal.BoolEnv("LEDGER_STREAM_PER_MESSAGE_INFO_LOGS", true),
+		StreamPerMessageInfoLogs: internal.BoolEnv("LEDGER_STREAM_PER_MESSAGE_INFO_LOGS", false),
 
 		// OpenTelemetry / Jaeger
 		OTELExporterOTLPEndpoint: internal.GetEnv("OTEL_EXPORTER_OTLP_ENDPOINT", ""),
