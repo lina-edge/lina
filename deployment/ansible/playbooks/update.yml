@@ -5,10 +5,11 @@
 # redis-server so routine code/infra edits are not blocked by a full "install everything" pass.
 #
 # From deployment/ansible/:
-#   ansible-playbook playbooks/update.yml
-#   ansible-playbook playbooks/update.yml --skip-tags mosquitto   # code + Caddy + exporters only
-#   ansible-playbook playbooks/update.yml --tags services          # only rebuild/copy LINA binaries + units
-#   ansible-playbook playbooks/update.yml --tags infra             # Caddy + monitoring + Mosquitto
+#   ansible-playbook playbooks/update.yml                          # services only (same as --tags services)
+#   ansible-playbook playbooks/update.yml --tags all               # full pass: services + Caddy + monitoring + Mosquitto
+#   ansible-playbook playbooks/update.yml --skip-tags mosquitto    # services + Caddy + exporters (no broker)
+#   ansible-playbook playbooks/update.yml --tags services          # explicit: only rebuild/copy LINA binaries + units
+#   ansible-playbook playbooks/update.yml --tags infra             # Caddy + monitoring + Mosquitto (no service build)
 #   ansible-playbook playbooks/update.yml --tags mosquitto         # broker + TLS certs from infrastructure/certs
 #
 # For a new host or to change Redis, run playbooks/site.yml instead.
@@ -50,14 +51,17 @@
         - caddy
         - infra
         - proxy
+        - never
     - role: monitoring
       tags:
         - monitoring
         - infra
         - exporters
+        - never
     - role: mosquitto
       tags:
         - mosquitto
         - infra
         - broker
         - mqtt
+        - never

@@ -87,7 +87,7 @@ func (ewsi *EastWestStreamInterface) StartDeviceConsumer(ctx context.Context, ha
 
 	par := clampParallelism(ewsi.cfg.ConsumeParallelism)
 	logger.WithStream(streamName, "consume").
-		Infof(streamCtx, "Starting device event consumer (name=%s, batch_parallelism=%d)", ewsi.consumerName, par)
+		Infof(streamCtx, "Starting device event consumer (name=%s, batch_parallelism=%d, xreadgroup_count=%d)", ewsi.consumerName, par, ewsi.cfg.StreamReadCount)
 
 	// Start pending message retry mechanism in a separate goroutine
 	go ewsi.startPendingMessageRetry(ctx, streamName, handler)
@@ -112,7 +112,7 @@ func (ewsi *EastWestStreamInterface) consumeDeviceEvents(ctx context.Context, st
 				Group:    ewsi.groupName,
 				Consumer: ewsi.consumerName,
 				Streams:  []string{streamName, ">"},
-				Count:    50, // Read up to 10 messages at a time
+				Count:    int64(ewsi.cfg.StreamReadCount),
 				Block:    5 * time.Second,
 			})
 

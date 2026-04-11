@@ -23,6 +23,18 @@ func IntEnv(key string, defaultValue int) int {
 	return defaultValue
 }
 
+// ClampStreamReadCount bounds Redis XREADGROUP COUNT (batch size). Values below 1 become 1; above max become max.
+func ClampStreamReadCount(n int) int {
+	const maxStreamReadCount = 1000
+	if n < 1 {
+		return 1
+	}
+	if n > maxStreamReadCount {
+		return maxStreamReadCount
+	}
+	return n
+}
+
 // BoolEnv retrieves a boolean environment variable or returns the default value
 func BoolEnv(key string, defaultValue bool) bool {
 	if v := os.Getenv(key); v != "" {

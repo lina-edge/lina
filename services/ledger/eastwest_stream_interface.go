@@ -205,7 +205,7 @@ func (ewsi *EastWestStreamInterface) StartLightningConsumer(ctx context.Context)
 
 	par := clampParallelism(ewsi.cfg.ConsumeParallelism)
 	logger.WithStream(streamName, "consume").
-		Infof(streamCtx, "Starting lightning consumer (name=%s, batch_parallelism=%d)", ewsi.consumerName, par)
+		Infof(streamCtx, "Starting lightning consumer (name=%s, batch_parallelism=%d, xreadgroup_count=%d)", ewsi.consumerName, par, ewsi.cfg.StreamReadCount)
 
 	// Start pending message retry mechanism in a separate goroutine
 	go ewsi.startPendingMessageRetry(ctx, streamName)
@@ -221,7 +221,7 @@ func (ewsi *EastWestStreamInterface) StartLightningConsumer(ctx context.Context)
 				Group:    ewsi.groupName,
 				Consumer: ewsi.consumerName,
 				Streams:  []string{streamName, ">"},
-				Count:    50,
+				Count:    int64(ewsi.cfg.StreamReadCount),
 				Block:    5 * time.Second,
 			})
 
@@ -285,7 +285,7 @@ func (ewsi *EastWestStreamInterface) StartConsumptionConsumer(ctx context.Contex
 
 	par := clampParallelism(ewsi.cfg.ConsumeParallelism)
 	logger.WithStream(streamName, "consume").
-		Infof(streamCtx, "Starting consumption consumer (name=%s, batch_parallelism=%d)", ewsi.consumerName, par)
+		Infof(streamCtx, "Starting consumption consumer (name=%s, batch_parallelism=%d, xreadgroup_count=%d)", ewsi.consumerName, par, ewsi.cfg.StreamReadCount)
 
 	// Start pending message retry mechanism in a separate goroutine
 	go ewsi.startPendingMessageRetry(ctx, streamName)
@@ -301,7 +301,7 @@ func (ewsi *EastWestStreamInterface) StartConsumptionConsumer(ctx context.Contex
 				Group:    ewsi.groupName,
 				Consumer: ewsi.consumerName,
 				Streams:  []string{streamName, ">"},
-				Count:    50,
+				Count:    int64(ewsi.cfg.StreamReadCount),
 				Block:    5 * time.Second,
 			})
 

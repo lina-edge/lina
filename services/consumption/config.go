@@ -16,6 +16,8 @@ type Config struct {
 	// Redis stream: consumer name (empty = auto consumption-{hostname}-{pid}). Parallelism = max concurrent handlers per batch.
 	StreamConsumerName string
 	ConsumeParallelism int
+	// StreamReadCount is XREADGROUP COUNT (max messages per read); clamped by internal.ClampStreamReadCount.
+	StreamReadCount int
 
 	// OpenTelemetry / Jaeger
 	OTELExporterOTLPEndpoint string
@@ -33,7 +35,8 @@ func LoadConfig() Config {
 		MaxPageSize:    internal.IntEnv("MAX_PAGE_SIZE", 200),
 
 		StreamConsumerName: internal.GetEnv("REDIS_STREAM_CONSUMER_NAME", "consumption-service"),
-		ConsumeParallelism: internal.IntEnv("CONSUMPTION_STREAM_PARALLELISM", 8),
+		ConsumeParallelism: internal.IntEnv("CONSUMPTION_STREAM_PARALLELISM", 4),
+		StreamReadCount:    internal.ClampStreamReadCount(internal.IntEnv("CONSUMPTION_STREAM_READ_COUNT", 50)),
 
 		// OpenTelemetry / Jaeger
 		OTELExporterOTLPEndpoint: internal.GetEnv("OTEL_EXPORTER_OTLP_ENDPOINT", ""),

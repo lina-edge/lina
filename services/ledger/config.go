@@ -16,6 +16,8 @@ type Config struct {
 	// Redis stream: consumer name (empty = auto ledger-{hostname}-{pid}). Parallelism = max concurrent handlers per batch.
 	StreamConsumerName string
 	ConsumeParallelism int
+	// StreamReadCount is XREADGROUP COUNT (max messages per read); clamped by internal.ClampStreamReadCount.
+	StreamReadCount int
 	// Enable/disable per-message INFO logs in stream handlers (use false for load tests).
 	StreamPerMessageInfoLogs bool
 
@@ -35,7 +37,8 @@ func LoadConfig() Config {
 		MaxPageSize:    internal.IntEnv("MAX_PAGE_SIZE", 200),
 
 		StreamConsumerName:       internal.GetEnv("REDIS_STREAM_CONSUMER_NAME", "ledger-service"),
-		ConsumeParallelism:       internal.IntEnv("LEDGER_STREAM_PARALLELISM", 4),
+		ConsumeParallelism:       internal.IntEnv("LEDGER_STREAM_PARALLELISM", 2),
+		StreamReadCount:          internal.ClampStreamReadCount(internal.IntEnv("LEDGER_STREAM_READ_COUNT", 50)),
 		StreamPerMessageInfoLogs: internal.BoolEnv("LEDGER_STREAM_PER_MESSAGE_INFO_LOGS", false),
 
 		// OpenTelemetry / Jaeger
