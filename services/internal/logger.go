@@ -285,19 +285,12 @@ func (l *Logger) Error(ctx context.Context, message string, err error) {
 // ctx is optional - if provided, trace context will be extracted from it
 func (l *Logger) Errorf(ctx context.Context, format string, args ...interface{}) {
 	var err error
-	var formatArgs []interface{}
-
-	// Extract error from args (last argument if it's an error)
 	if len(args) > 0 {
 		if e, ok := args[len(args)-1].(error); ok {
 			err = e
-			formatArgs = args[:len(args)-1]
-		} else {
-			formatArgs = args
 		}
 	}
-
-	message := fmt.Sprintf(format, formatArgs...)
+	message := fmt.Sprintf(format, args...)
 	l.log(ctx, "error", message, err, 0, nil)
 }
 

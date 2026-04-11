@@ -366,6 +366,16 @@ func (ewsi *EastWestStreamInterface) handleConsumptionMessage(ctx context.Contex
 		}
 		err = ewsi.handler.HandleDeviceConsumptionRecorded(ctx, recorded)
 		if err != nil {
+			// isMessageProcessed sets a Redis key before the handler runs (duplicate-delivery guard).
+			// ExpectedFailureError means "not applied yet" (e.g. no active authorization) — we must not
+			// leave that key set or the next retry will treat the message as done and ACK without applying.
+			var expectedErr *ExpectedFailureError
+			if errors.As(err, &expectedErr) {
+				if relErr := ewsi.releaseMessageIdempotencyMarker(ctx, streamName, msg.ID); relErr != nil {
+					logger.WithStream(streamName, "consume").
+						Warnf(ctx, "Failed to release idempotency marker for retryable consumption: %v", relErr)
+				}
+			}
 			return err
 		}
 
@@ -384,6 +394,14 @@ func (ewsi *EastWestStreamInterface) handleConsumptionMessage(ctx context.Contex
 	}
 
 	return nil
+}
+
+// releaseMessageIdempotencyMarker deletes the per-message key set by isMessageProcessed so a later
+// retry (same stream message ID, not ACKed) can run the handler again — required for retryable
+// failures such as no active authorization.
+func (ewsi *EastWestStreamInterface) releaseMessageIdempotencyMarker(ctx context.Context, streamName, messageID string) error {
+	key := fmt.Sprintf("%s:%s:%s", processedMessageKeyPrefix, streamName, messageID)
+	return ewsi.Client().Del(ctx, key).Err()
 }
 
 // isMessageProcessed checks if a message has already been processed using Redis

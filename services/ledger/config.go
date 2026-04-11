@@ -37,7 +37,7 @@ func LoadConfig() Config {
 		MaxPageSize:    internal.IntEnv("MAX_PAGE_SIZE", 200),
 
 		StreamConsumerName:       internal.GetEnv("REDIS_STREAM_CONSUMER_NAME", "ledger-service"),
-		ConsumeParallelism:       internal.IntEnv("LEDGER_STREAM_PARALLELISM", 2),
+		ConsumeParallelism:       internal.IntEnv("LEDGER_STREAM_PARALLELISM", 1),
 		StreamReadCount:          internal.ClampStreamReadCount(internal.IntEnv("LEDGER_STREAM_READ_COUNT", 100)),
 		StreamPerMessageInfoLogs: internal.BoolEnv("LEDGER_STREAM_PER_MESSAGE_INFO_LOGS", false),
 

@@ -71,16 +71,14 @@ func openLedgerRepoSQLite(dbPath string, busyTimeoutMS int) (LedgerRepository, e
 	}
 
 	// Configure connection pool for SQLite
-	// SQLite works best with limited connections due to its locking model
-	// With WAL mode, we can have multiple readers but only one writer at a time
-	// Set max open connections to a reasonable number (10-20 is good for WAL mode)
-	db.SetMaxOpenConns(20)
-	// Keep some connections idle for reuse
-	db.SetMaxIdleConns(5)
-	// Connection lifetime - close idle connections after 5 minutes
-	db.SetConnMaxLifetime(5 * time.Minute)
-	// Idle timeout - close idle connections after 10 minutes
-	db.SetConnMaxIdleTime(10 * time.Minute)
+	// WAL allows concurrent readers but still a single writer. Multiple open
+	// connections each trying to write cause SQLITE_BUSY under load. Serialize
+	// access through one connection so callers wait on the pool instead of
+	// failing after busy_timeout.
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+	db.SetConnMaxLifetime(0)
+	db.SetConnMaxIdleTime(0)
 
 	// Create tables and indexes
 	stmts := []string{
