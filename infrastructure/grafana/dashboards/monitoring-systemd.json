@@ -18,7 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 2,
+  "id": 1,
   "links": [],
   "panels": [
     {
@@ -2293,7 +2293,7 @@
         {
           "editorMode": "code",
           "expr": "redis_stream_group_consumer_messages_pending",
-          "legendFormat": "{{stream}}",
+          "legendFormat": "{{stream}} [{{group}}]",
           "range": true,
           "refId": "A"
         }
@@ -2529,5 +2529,5 @@
   "timezone": "browser",
   "title": "LINA Monitoring (Systemd + Custom Metrics)",
   "uid": "lina-systemd",
-  "version": 7
+  "version": 1
 }
