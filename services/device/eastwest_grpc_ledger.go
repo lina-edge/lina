@@ -29,8 +29,7 @@ func NewLedgerClient(ctx context.Context, cfg Config) (*LedgerClient, error) {
 	addr := fmt.Sprintf("%s:%d", host, port)
 	logger.Infof(ctx, "Connecting to ledger gRPC service at %s via eastwest gRPC", addr)
 
-	// Configure keepalive for long-lived connections
-	// Time: 30s is a reasonable interval to avoid "too_many_pings" errors
+	// Ledger/lightning servers use KeepaliveEnforcementPolicy MinTime 30s (default server MinTime is 5m).
 	keepaliveParams := keepalive.ClientParameters{
 		Time:                30 * time.Second,
 		Timeout:             10 * time.Second,

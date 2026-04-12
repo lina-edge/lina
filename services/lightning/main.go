@@ -13,6 +13,7 @@ import (
 	lightningpb "github.com/robertodantas/lina/proto/gen/interfaces/lightning"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 )
 
 var logger = internal.NewLogger("lightning")
@@ -115,6 +116,10 @@ func main() {
 
 		grpcServer := grpc.NewServer(
 			grpc.StatsHandler(otelgrpc.NewServerHandler()),
+			grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+				MinTime:             30 * time.Second,
+				PermitWithoutStream: true,
+			}),
 		)
 		eastWestServer := NewEastWestGRPCServer(lndClient, streamPublisher)
 		lightningpb.RegisterLightningServiceServer(grpcServer, eastWestServer)

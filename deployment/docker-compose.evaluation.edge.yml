@@ -77,7 +77,7 @@ services:
       - LEDGER_GRPC_PORT=${GRPC_PORT}
       - LIGHTNING_GRPC_HOST=lightning
       - LIGHTNING_GRPC_PORT=${GRPC_PORT}
-      - DB_PATH=/data/devices.db
+      - DB_PATH=/data/devices
       # Disable OpenTelemetry
       - OTEL_EXPORTER_OTLP_ENDPOINT=
       - OTEL_SERVICE_NAME=device-service
@@ -109,7 +109,7 @@ services:
       - REDIS_PORT=6379
       - STREAM_READ_COUNT=${LEDGER_STREAM_READ_COUNT:-100}
       - STREAM_PARALLELISM=${LEDGER_STREAM_PARALLELISM:-4}
-      - DB_PATH=/data/ledger-pebble
+      - DB_PATH=/data/ledger
       # Disable OpenTelemetry
       - OTEL_EXPORTER_OTLP_ENDPOINT=
       - OTEL_SERVICE_NAME=ledger-service
@@ -135,7 +135,7 @@ services:
       - REDIS_PORT=6379
       - STREAM_READ_COUNT=${CONSUMPTION_STREAM_READ_COUNT:-100}
       - STREAM_PARALLELISM=${CONSUMPTION_STREAM_PARALLELISM:-4}
-      - DB_PATH=/data/consumption-pebble
+      - DB_PATH=/data/consumption
       # Disable OpenTelemetry
       - OTEL_EXPORTER_OTLP_ENDPOINT=
       - OTEL_SERVICE_NAME=consumption-service
@@ -157,7 +157,7 @@ services:
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - DB_PATH=/data/lightning.db
+      - DB_PATH=/data/lightning
       # Disable OpenTelemetry
       - OTEL_EXPORTER_OTLP_ENDPOINT=
       - OTEL_SERVICE_NAME=lightning-service
