@@ -1,3 +1,10 @@
+# Container log rotation (json-file driver). Override via .env: DOCKER_LOG_MAX_SIZE, DOCKER_LOG_MAX_FILE
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: ${DOCKER_LOG_MAX_SIZE:-1m}
+    max-file: ${DOCKER_LOG_MAX_FILE:-2}
+
 services:
   caddy:
     image: 7robertodantas/lina-caddy:latest
@@ -11,6 +18,7 @@ services:
         condition: service_started
       consumption:
         condition: service_started
+    logging: *default-logging
     restart: unless-stopped
 
   redis:
@@ -28,6 +36,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 5s
+    logging: *default-logging
     restart: unless-stopped
 
   mosquitto:
@@ -46,6 +55,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+    logging: *default-logging
     restart: unless-stopped
 
   device:
@@ -85,6 +95,7 @@ services:
         condition: service_started
       lightning:
         condition: service_started
+    logging: *default-logging
 
   ledger:
     image: 7robertodantas/lina-ledger:latest
@@ -107,6 +118,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    logging: *default-logging
     restart: unless-stopped
 
   consumption:
@@ -130,6 +142,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    logging: *default-logging
     restart: unless-stopped
 
   lightning:
@@ -150,7 +163,8 @@ services:
       - lightning-data:/data
     depends_on:
       redis:
-        condition: service_healthy      
+        condition: service_healthy
+    logging: *default-logging
     restart: unless-stopped
 
   redis_exporter:
@@ -165,6 +179,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    logging: *default-logging
     restart: unless-stopped
 
   cadvisor_exporter:
@@ -183,6 +198,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     devices:
       - /dev/kmsg:/dev/kmsg
+    logging: *default-logging
 
   node_exporter:
     image: prom/node-exporter:v1.10.2
@@ -202,6 +218,7 @@ services:
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
     ports:
       - "9463:9100"   # remove this if you use network_mode: host
+    logging: *default-logging
 
   # Host /proc via pid + mount (same idea as Ansible process-exporter on bare metal).
   process_exporter:
@@ -216,6 +233,7 @@ services:
     command:
       - --procfs=/host/proc
       - --web.listen-address=:9256
+    logging: *default-logging
 
   # Talks to the host systemd over D-Bus. Linux only; typically unusable on Docker Desktop (macOS).
   systemd_exporter:
@@ -229,6 +247,7 @@ services:
       - /run/dbus/system_bus_socket:/run/dbus/system_bus_socket:ro
     command:
       - --web.listen-address=:9558
+    logging: *default-logging
 
 
 volumes:
