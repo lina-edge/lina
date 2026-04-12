@@ -47,7 +47,7 @@ func LoggingUnaryClientInterceptor(serviceName string) func(ctx context.Context,
 			opLogger = opLogger.WithDeviceID(deviceID)
 		}
 
-		opLogger.InfoWithFields(ctx, fmt.Sprintf("gRPC call started: %s via eastwest gRPC", simpleMethod), map[string]interface{}{
+		opLogger.DebugWithFields(ctx, fmt.Sprintf("gRPC call started: %s via eastwest gRPC", simpleMethod), map[string]interface{}{
 			"method":  simpleMethod,
 			"request": req,
 		})
@@ -68,7 +68,7 @@ func LoggingUnaryClientInterceptor(serviceName string) func(ctx context.Context,
 				})
 			}
 		} else {
-			opLogger.InfoWithFields(ctx, fmt.Sprintf("gRPC call succeeded: %s via eastwest gRPC", simpleMethod), map[string]interface{}{
+			opLogger.DebugWithFields(ctx, fmt.Sprintf("gRPC call succeeded: %s via eastwest gRPC", simpleMethod), map[string]interface{}{
 				"response": reply,
 				"duration": duration.String(),
 			})

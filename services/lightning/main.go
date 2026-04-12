@@ -19,6 +19,7 @@ var logger = internal.NewLogger("lightning")
 
 func main() {
 	ctx := context.Background()
+	internal.InitLogLevel()
 
 	// Load configuration
 	cfg := LoadConfig()

@@ -17,17 +17,15 @@ const (
 
 // EastWestStreamHandler handles processing of Redis stream messages from east-west services
 type EastWestStreamHandler struct {
-	repo                      LedgerRepository
-	publisher                 *EastWestStreamPublisher
-	perMessageInfoLogsEnabled bool
+	repo      LedgerRepository
+	publisher *EastWestStreamPublisher
 }
 
 // NewEastWestStreamHandler creates a new east-west stream handler
-func NewEastWestStreamHandler(cfg Config, repo LedgerRepository, publisher *EastWestStreamPublisher) *EastWestStreamHandler {
+func NewEastWestStreamHandler(repo LedgerRepository, publisher *EastWestStreamPublisher) *EastWestStreamHandler {
 	return &EastWestStreamHandler{
-		repo:                      repo,
-		publisher:                 publisher,
-		perMessageInfoLogsEnabled: cfg.StreamPerMessageInfoLogs,
+		repo:      repo,
+		publisher: publisher,
 	}
 }
 
@@ -64,13 +62,11 @@ func (esh *EastWestStreamHandler) HandleInvoiceSettled(ctx context.Context, sett
 		return fmt.Errorf("failed to check idempotency for invoice %s: %w", invoiceID, err)
 	} else if ok {
 		if kind == "credit" {
-			if esh.perMessageInfoLogsEnabled {
-				logger.WithDeviceID(deviceID).
-					WithStream("event.lightning", "consume").
-					InfoWithFields(ctx, "Invoice already credited, skipping", map[string]interface{}{
-						"invoice_id": invoiceID,
-					})
-			}
+			logger.WithDeviceID(deviceID).
+				WithStream("event.lightning", "consume").
+				DebugWithFields(ctx, "Invoice already credited, skipping", map[string]interface{}{
+					"invoice_id": invoiceID,
+				})
 			return nil
 		}
 		return fmt.Errorf("idempotency key %s already used for kind %s", invoiceID, kind)
@@ -98,15 +94,13 @@ func (esh *EastWestStreamHandler) HandleInvoiceSettled(ctx context.Context, sett
 		return fmt.Errorf("failed to commit credit for invoice %s: %w", invoiceID, err)
 	}
 
-	if esh.perMessageInfoLogsEnabled {
-		logger.WithDeviceID(deviceID).
-			WithStream("event.lightning", "consume").
-			InfoWithFields(ctx, "Credited device from invoice", map[string]interface{}{
-				"invoice_id":    invoiceID,
-				"amount_msat":   entry.AmountMsat,
-				"balance_after": entry.BalanceAfter,
-			})
-	}
+	logger.WithDeviceID(deviceID).
+		WithStream("event.lightning", "consume").
+		DebugWithFields(ctx, "Credited device from invoice", map[string]interface{}{
+			"invoice_id":    invoiceID,
+			"amount_msat":   entry.AmountMsat,
+			"balance_after": entry.BalanceAfter,
+		})
 
 	// Record metrics
 	RecordEntry(ctx, "credit", "invoice")
@@ -134,13 +128,11 @@ func (esh *EastWestStreamHandler) HandleDeviceConsumptionRecorded(ctx context.Co
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	if esh.perMessageInfoLogsEnabled {
-		logger.WithStream("event.consumption", "consume").
-			WithDeviceID(recorded.GetDeviceId()).
-			InfoWithFields(ctx, "Consumption received", map[string]interface{}{
-				"debit_msat": recorded.GetDebitMsat(),
-			})
-	}
+	logger.WithStream("event.consumption", "consume").
+		WithDeviceID(recorded.GetDeviceId()).
+		DebugWithFields(ctx, "Consumption received", map[string]interface{}{
+			"debit_msat": recorded.GetDebitMsat(),
+		})
 
 	// Process the consumption: debit from authorization (uses the same transaction)
 	// Returns results needed for publishing events after commit
@@ -258,7 +250,7 @@ func (esh *EastWestStreamHandler) processConsumptionWithTx(ctx context.Context, 
 			// This is an expected failure scenario (device may not have authorization yet)
 			// We've handled it appropriately by publishing the failed event, so we should ACK the message
 			logger.WithDeviceID(deviceID).
-				Warn(ctx, "No active authorization found")
+				Debug(ctx, "No active authorization found")
 			timestamp := time.Now().Format(time.RFC3339)
 			if err := esh.publisher.PublishAuthorizationDebitFailed(ctx, "", deviceID, recorded.GetDebitMsat(), 0, "NO_ACTIVE_AUTHORIZATION", timestamp); err != nil {
 				logger.WithDeviceID(deviceID).
@@ -290,7 +282,7 @@ func (esh *EastWestStreamHandler) processConsumptionWithTx(ctx context.Context, 
 	if remainingMsat < requestedDebit {
 		actualDebit = remainingMsat
 		logger.WithDeviceID(deviceID).
-			WarnWithFields(ctx, "Insufficient remaining in authorization", map[string]interface{}{
+			DebugWithFields(ctx, "Insufficient remaining in authorization", map[string]interface{}{
 				"authorization_id": authorizationID,
 				"remaining_msat":   remainingMsat,
 				"requested_msat":   requestedDebit,

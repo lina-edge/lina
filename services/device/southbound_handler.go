@@ -39,7 +39,7 @@ func NewSouthboundHandler(publisher *SouthboundPublisher, streamPublisher *EastW
 // HandleHeartbeat processes heartbeat messages from devices
 func (sh *SouthboundHandler) HandleHeartbeat(ctx context.Context, deviceID string, payload *mqttpb.HeartbeatPayload) {
 	logger.WithDeviceID(payload.GetDeviceId()).
-		InfoWithFields(ctx, "Heartbeat received on southbound mqtt", map[string]interface{}{
+		DebugWithFields(ctx, "Heartbeat received on southbound mqtt", map[string]interface{}{
 			"status":    payload.GetStatus().String(),
 			"timestamp": payload.GetTimestamp(),
 		})
@@ -48,7 +48,7 @@ func (sh *SouthboundHandler) HandleHeartbeat(ctx context.Context, deviceID strin
 // HandleUsage processes usage messages from devices
 func (sh *SouthboundHandler) HandleUsage(ctx context.Context, deviceID string, payload *mqttpb.UsagePayload) {
 	logger.WithDeviceID(payload.GetDeviceId()).
-		InfoWithFields(ctx, "Usage received on southbound mqtt", map[string]interface{}{
+		DebugWithFields(ctx, "Usage received on southbound mqtt", map[string]interface{}{
 			"report_id": payload.GetReportId(),
 			"strategy":  payload.GetStrategy().String(),
 			"measure":   payload.GetMeasure(),
@@ -68,7 +68,7 @@ func (sh *SouthboundHandler) HandleUsage(ctx context.Context, deviceID string, p
 // HandleAuthorizationRequest processes authorization requests from devices
 func (sh *SouthboundHandler) HandleAuthorizationRequest(ctx context.Context, deviceID string, request *mqttpb.AuthorizationRequestPayload) {
 	logger.WithDeviceID(request.GetDeviceId()).
-		InfoWithFields(ctx, "Authorization request received on southbound mqtt", map[string]interface{}{
+		DebugWithFields(ctx, "Authorization request received on southbound mqtt", map[string]interface{}{
 			"request_id":   request.GetRequestId(),
 			"request_msat": request.GetRequestMsat(),
 			"reason":       request.GetReason(),
@@ -168,7 +168,7 @@ func (sh *SouthboundHandler) HandleAuthorizationRequest(ctx context.Context, dev
 // HandleInvoiceRequest processes invoice requests from devices
 func (sh *SouthboundHandler) HandleInvoiceRequest(ctx context.Context, deviceID string, request *mqttpb.InvoiceRequestPayload) {
 	logger.WithDeviceID(request.GetDeviceId()).
-		InfoWithFields(ctx, "Invoice request received on southbound mqtt", map[string]interface{}{
+		DebugWithFields(ctx, "Invoice request received on southbound mqtt", map[string]interface{}{
 			"request_id":  request.GetRequestId(),
 			"amount_msat": request.GetAmountMsat(),
 			"reason":      request.GetReason(),

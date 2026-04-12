@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"context"
 
 	"github.com/robertodantas/lina/internal"
 )
@@ -41,30 +41,28 @@ func LoadConfig() *Config {
 		AutopayEnabled: internal.BoolEnv("AUTOPAY_ENABLED", false),
 	}
 
-	// Log the autopay enabled status for debugging
-	autopayEnv := internal.GetEnv("AUTOPAY_ENABLED", "")
-	log.Printf("AUTOPAY_ENABLED env var: '%s', parsed as: %v", autopayEnv, cfg.AutopayEnabled)
+	ctx := context.Background()
 
 	// Validate receiver LND configuration
 	if cfg.ReceiverLNDHost == "" {
-		log.Fatal("RECEIVER_LND_HOST or LND_HOST environment variable required")
+		logger.Fatal(ctx, "RECEIVER_LND_HOST or LND_HOST environment variable required", nil)
 	}
 	if cfg.ReceiverLNDTLSCertHex == "" {
-		log.Fatal("RECEIVER_LND_TLS_CERT_HEX or LND_TLS_CERT_HEX environment variable required")
+		logger.Fatal(ctx, "RECEIVER_LND_TLS_CERT_HEX or LND_TLS_CERT_HEX environment variable required", nil)
 	}
 	if cfg.ReceiverLNDMacaroonHex == "" {
-		log.Fatal("RECEIVER_LND_MACAROON_HEX or LND_MACAROON_HEX environment variable required")
+		logger.Fatal(ctx, "RECEIVER_LND_MACAROON_HEX or LND_MACAROON_HEX environment variable required", nil)
 	}
 
 	// Validate payer LND configuration
 	if cfg.PayerLNDHost == "" {
-		log.Fatal("PAYER_LND_HOST or LND_HOST environment variable required")
+		logger.Fatal(ctx, "PAYER_LND_HOST or LND_HOST environment variable required", nil)
 	}
 	if cfg.PayerLNDTLSCertHex == "" {
-		log.Fatal("PAYER_LND_TLS_CERT_HEX or LND_TLS_CERT_HEX environment variable required")
+		logger.Fatal(ctx, "PAYER_LND_TLS_CERT_HEX or LND_TLS_CERT_HEX environment variable required", nil)
 	}
 	if cfg.PayerLNDMacaroonHex == "" {
-		log.Fatal("PAYER_LND_MACAROON_HEX or LND_MACAROON_HEX environment variable required")
+		logger.Fatal(ctx, "PAYER_LND_MACAROON_HEX or LND_MACAROON_HEX environment variable required", nil)
 	}
 
 	return cfg

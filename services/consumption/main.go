@@ -15,6 +15,7 @@ var logger = internal.NewLogger("consumption")
 
 func main() {
 	ctx := context.Background()
+	internal.InitLogLevel()
 
 	logger.Info(ctx, "Starting consumption service")
 

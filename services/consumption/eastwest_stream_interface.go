@@ -235,7 +235,7 @@ func (ewsi *EastWestStreamInterface) processMessagesParallelRetry(streamCtx cont
 			return
 		}
 		logger.WithStream(streamName, "consume").
-			Infof(streamCtx, "Successfully retried pending message %s", msg.ID)
+			Debugf(streamCtx, "Successfully retried pending message %s", msg.ID)
 	})
 }
 

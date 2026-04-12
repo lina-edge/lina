@@ -933,6 +933,6 @@ func (mds *MQTTDynSecService) ProvisionDevicesAnyRole(ctx context.Context) error
 func (mds *MQTTDynSecService) Disconnect(ctx context.Context) {
 	if mds.client != nil {
 		mds.client.Disconnect(250)
-		logger.Info(ctx, "Disconnected from MQTT broker (dynamic security service) on southbound mqtt")
+		logger.Debug(ctx, "Disconnected from MQTT broker (dynamic security service) on southbound mqtt")
 	}
 }

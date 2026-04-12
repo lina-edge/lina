@@ -68,7 +68,7 @@ func NewMQTTClient(ctx context.Context, cfg Config) (*MQTTClient, error) {
 				logger.Error(ctx, "MQTT connection lost on southbound mqtt", err)
 			},
 			OnConnect: func(client mqtt.Client) {
-				logger.Info(ctx, "MQTT OnConnect handler called on southbound mqtt")
+				logger.Debug(ctx, "MQTT OnConnect handler called on southbound mqtt")
 			},
 		},
 	}
@@ -102,7 +102,7 @@ func NewMQTTClient(ctx context.Context, cfg Config) (*MQTTClient, error) {
 			},
 		},
 		OnPublishSuccess: func(c context.Context, topic string) {
-			logger.InfoWithFields(c, "Published message on southbound mqtt", map[string]interface{}{
+			logger.DebugWithFields(c, "Published message on southbound mqtt", map[string]interface{}{
 				"topic": topic,
 			})
 		},
@@ -113,7 +113,7 @@ func NewMQTTClient(ctx context.Context, cfg Config) (*MQTTClient, error) {
 			})
 		},
 		OnDisconnect: func() {
-			logger.Info(context.Background(), "Disconnected from MQTT broker on southbound mqtt")
+			logger.Debug(context.Background(), "Disconnected from MQTT broker on southbound mqtt")
 		},
 	})
 	if err != nil {

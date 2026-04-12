@@ -83,7 +83,7 @@ func (esp *EastWestStreamPublisher) PublishConsumptionEvent(ctx context.Context,
 
 	logger.WithDeviceID(deviceID).
 		WithStream(streamName, "produce").
-		InfoWithFields(ctx, "Published DeviceConsumptionRecorded event", map[string]interface{}{
+		DebugWithFields(ctx, "Published DeviceConsumptionRecorded event", map[string]interface{}{
 			"report_id":  reportID,
 			"debit_msat": debitMsat,
 			"stream_id":  streamID,
@@ -159,7 +159,7 @@ func (esp *EastWestStreamPublisher) publishOutboxEvents(ctx context.Context) err
 
 	if len(events) > 0 {
 		logger.WithStream("event.consumption", "produce").
-			InfoWithFields(ctx, "Published events from outbox", map[string]interface{}{
+			DebugWithFields(ctx, "Published events from outbox", map[string]interface{}{
 				"count": len(events),
 			})
 	}
@@ -199,7 +199,7 @@ func (esp *EastWestStreamPublisher) cleanupOutbox(ctx context.Context) error {
 	}
 
 	if rowsAffected > 0 {
-		logger.InfoWithFields(ctx, "Cleaned up old published records from outbox", map[string]interface{}{
+		logger.DebugWithFields(ctx, "Cleaned up old published records from outbox", map[string]interface{}{
 			"rows_affected":  rowsAffected,
 			"retention_days": retentionDays,
 		})

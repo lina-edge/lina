@@ -173,7 +173,7 @@ func (nb *NorthboundInterface) createDevice(c *gin.Context) {
 		// Continue even if publishing fails - device is already in the database and provisioned
 	} else {
 		logger.WithDeviceID(device.DeviceID).
-			InfoWithFields(ctx, "Device config published on southbound mqtt via northbound REST", map[string]interface{}{
+			DebugWithFields(ctx, "Device config published on southbound mqtt via northbound REST", map[string]interface{}{
 				"topic": fmt.Sprintf("/devices/%s/config", device.DeviceID),
 			})
 	}
@@ -304,7 +304,7 @@ func (nb *NorthboundInterface) publishDeviceConfigBatches(ctx context.Context, d
 	if batchSize <= 0 {
 		batchSize = 1000
 	}
-	logger.Infof(ctx, "Publishing configs for %d devices", len(devices))
+	logger.Debugf(ctx, "Publishing configs for %d devices", len(devices))
 	for i := 0; i < len(devices); i += batchSize {
 		end := i + batchSize
 		if end > len(devices) {
@@ -312,7 +312,7 @@ func (nb *NorthboundInterface) publishDeviceConfigBatches(ctx context.Context, d
 		}
 		batch := devices[i:end]
 		pageOK := nb.publishDeviceConfigsInParallel(ctx, batch)
-		logger.Infof(ctx, "Published configs for device batch %d-%d (%d/%d succeeded)", i, end-1, pageOK, len(batch))
+		logger.Debugf(ctx, "Published configs for device batch %d-%d (%d/%d succeeded)", i, end-1, pageOK, len(batch))
 	}
 }
 
@@ -338,14 +338,14 @@ func (nb *NorthboundInterface) RepublishAllDeviceConfigs(ctx context.Context) er
 		}
 
 		page++
-		logger.Infof(ctx, "Republishing configs on southbound mqtt for page %d (offset=%d, count=%d)", page, offset, len(devices))
+		logger.Debugf(ctx, "Republishing configs on southbound mqtt for page %d (offset=%d, count=%d)", page, offset, len(devices))
 
 		pageSuccess := nb.publishDeviceConfigsInParallel(ctx, devices)
 
 		totalSuccess += pageSuccess
 		offset += len(devices)
 
-		logger.Infof(ctx, "Finished page %d of config republish on southbound mqtt (success=%d, page_total=%d)", page, pageSuccess, len(devices))
+		logger.Debugf(ctx, "Finished page %d of config republish on southbound mqtt (success=%d, page_total=%d)", page, pageSuccess, len(devices))
 
 		// If we got less than a full page, we've reached the end
 		if len(devices) < pageSize {

@@ -55,7 +55,7 @@ func (esh *EastWestStreamHandler) HandleUsageReported(ctx context.Context, usage
 	pricePerUnitMsat := usage.GetPricePerUnitMsat()
 
 	logger.WithDeviceID(deviceID).
-		InfoWithFields(ctx, "Device event received", map[string]interface{}{
+		DebugWithFields(ctx, "Device event received", map[string]interface{}{
 			"report_id":           usage.GetReportId(),
 			"measure":             usage.GetMeasure(),
 			"unit":                usage.GetUnit(),
@@ -94,7 +94,7 @@ func (esh *EastWestStreamHandler) HandleUsageReported(ctx context.Context, usage
 	}
 
 	logger.WithDeviceID(deviceID).
-		InfoWithFields(ctx, "Processing report", map[string]interface{}{
+		DebugWithFields(ctx, "Processing report", map[string]interface{}{
 			"report_id":  reportID,
 			"measure":    measure,
 			"unit":       usage.GetUnit(),
@@ -114,7 +114,7 @@ func (esh *EastWestStreamHandler) HandleUsageReported(ctx context.Context, usage
 	}
 
 	logger.WithDeviceID(deviceID).
-		InfoWithFields(ctx, "Consumption recorded", map[string]interface{}{
+		DebugWithFields(ctx, "Consumption recorded", map[string]interface{}{
 			"report_id":     reportID,
 			"usage_msat":    usageDebitMsat,
 			"debit_msat":    debitMsat,

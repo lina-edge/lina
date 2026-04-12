@@ -146,7 +146,7 @@ func (s *EastWestServer) CreateOrGetAuthorization(ctx context.Context, req *ledg
 
 	// Create debit ledger entry for the authorization
 	logger.WithDeviceID(req.DeviceId).
-		InfoWithFields(ctx, "Creating authorization hold debit via eastwest gRPC", map[string]interface{}{
+		DebugWithFields(ctx, "Creating authorization hold debit via eastwest gRPC", map[string]interface{}{
 			"authorization_id": authID,
 			"amount_msat":      req.RequestMsat,
 			"reason":           req.Reason,

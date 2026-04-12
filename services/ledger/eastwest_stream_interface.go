@@ -635,7 +635,7 @@ func (ewsi *EastWestStreamInterface) checkExpiredAuthorizations(ctx context.Cont
 	}
 
 	if processed > 0 {
-		logger.InfoWithFields(ctx, "Marked authorizations as expired", map[string]interface{}{
+		logger.DebugWithFields(ctx, "Marked authorizations as expired", map[string]interface{}{
 			"count": processed,
 		})
 	}

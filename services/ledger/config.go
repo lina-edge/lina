@@ -18,8 +18,6 @@ type Config struct {
 	ConsumeParallelism int
 	// StreamReadCount is XREADGROUP COUNT (max messages per read); clamped by internal.ClampStreamReadCount.
 	StreamReadCount int
-	// Enable/disable per-message INFO logs in stream handlers (use false for load tests).
-	StreamPerMessageInfoLogs bool
 
 	// OpenTelemetry / Jaeger
 	OTELExporterOTLPEndpoint string
@@ -38,8 +36,7 @@ func LoadConfig() Config {
 
 		StreamConsumerName:       internal.GetEnv("REDIS_STREAM_CONSUMER_NAME", "ledger-service"),
 		ConsumeParallelism:       internal.IntEnv("LEDGER_STREAM_PARALLELISM", 1),
-		StreamReadCount:          internal.ClampStreamReadCount(internal.IntEnv("LEDGER_STREAM_READ_COUNT", 100)),
-		StreamPerMessageInfoLogs: internal.BoolEnv("LEDGER_STREAM_PER_MESSAGE_INFO_LOGS", false),
+		StreamReadCount: internal.ClampStreamReadCount(internal.IntEnv("LEDGER_STREAM_READ_COUNT", 100)),
 
 		// OpenTelemetry / Jaeger
 		OTELExporterOTLPEndpoint: internal.GetEnv("OTEL_EXPORTER_OTLP_ENDPOINT", ""),

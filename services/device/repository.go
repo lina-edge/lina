@@ -502,9 +502,9 @@ func (r *DeviceRepository) CreateDevicesBatch(ctx context.Context, devices []*De
 
 	skippedCount := len(devices) - insertedCount
 	if skippedCount > 0 {
-		logger.Infof(ctx, "Batch processed %d devices: %d inserted, %d skipped (already exist)", len(devices), insertedCount, skippedCount)
+		logger.Debugf(ctx, "Batch processed %d devices: %d inserted, %d skipped (already exist)", len(devices), insertedCount, skippedCount)
 	} else {
-		logger.Infof(ctx, "Batch created %d devices in database", insertedCount)
+		logger.Debugf(ctx, "Batch created %d devices in database", insertedCount)
 	}
 	return nil
 }

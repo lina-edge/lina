@@ -28,7 +28,7 @@ func (esh *EastWestStreamHandler) HandleDeviceCredited(ctx context.Context, payl
 // HandleDeviceDebited processes device debited events
 func (esh *EastWestStreamHandler) HandleDeviceDebited(ctx context.Context, payload *ledgermodel.DeviceDebitedEvent) error {
 	logger.WithDeviceID(payload.GetDeviceId()).
-		InfoWithFields(ctx, "Device debited via eastwest gRPC", map[string]interface{}{
+		DebugWithFields(ctx, "Device debited via eastwest gRPC", map[string]interface{}{
 			"authorization_id": payload.GetAuthorizationId(),
 			"amount_msat":      payload.GetAmountMsat(),
 			"new_balance_msat": payload.GetNewBalanceMsat(),
@@ -67,7 +67,7 @@ func (esh *EastWestStreamHandler) HandleAuthorizationDebitFailed(ctx context.Con
 // HandleInvoiceSettled processes invoice settled events
 func (esh *EastWestStreamHandler) HandleInvoiceSettled(ctx context.Context, payload *lightningmodel.InvoiceSettledEvent) error {
 	logger.WithDeviceID(payload.GetDeviceId()).
-		InfoWithFields(ctx, "Processing InvoiceSettled event from lightning stream", map[string]interface{}{
+		DebugWithFields(ctx, "Processing InvoiceSettled event from lightning stream", map[string]interface{}{
 			"invoice_id":  payload.GetInvoiceId(),
 			"amount_msat": payload.GetAmountReceivedMsat(),
 		})
@@ -88,7 +88,7 @@ func (esh *EastWestStreamHandler) HandleInvoiceSettled(ctx context.Context, payl
 // HandleInvoiceExpired processes invoice expired events
 func (esh *EastWestStreamHandler) HandleInvoiceExpired(ctx context.Context, payload *lightningmodel.InvoiceExpiredEvent) error {
 	logger.WithDeviceID(payload.GetDeviceId()).
-		InfoWithFields(ctx, "Processing InvoiceExpired event from lightning stream", map[string]interface{}{
+		DebugWithFields(ctx, "Processing InvoiceExpired event from lightning stream", map[string]interface{}{
 			"invoice_id": payload.GetInvoiceId(),
 		})
 	return esh.publisher.PublishInvoiceEvent(ctx, payload.GetDeviceId(), payload.GetInvoiceId(), mqttpb.InvoiceStatus_INVOICE_STATUS_EXPIRED, 0, 0, payload.GetTimestamp())

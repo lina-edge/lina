@@ -82,6 +82,7 @@ func djb2(b []byte) uint64 {
 
 func main() {
 	ctx := context.Background()
+	internal.InitLogLevel()
 
 	logger.Info(ctx, "Starting ledger service")
 
@@ -133,7 +134,7 @@ func main() {
 	publisher := NewEastWestStreamPublisher(streamClient)
 
 	// Create handler
-	handler := NewEastWestStreamHandler(cfg, repo, publisher)
+	handler := NewEastWestStreamHandler(repo, publisher)
 
 	// Create stream interface
 	streamInterface, err := NewEastWestStreamInterface(ctx, cfg, handler)

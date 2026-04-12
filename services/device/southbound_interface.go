@@ -118,7 +118,7 @@ func (sb *SouthboundInterface) handleAuthorizationRequestMessage(ctx context.Con
 
 	// Log that we received a message on this topic
 	logger.WithDeviceID(deviceID).
-		InfoWithFields(ctx, "Received message on authorization request topic on southbound mqtt", map[string]interface{}{
+		DebugWithFields(ctx, "Received message on authorization request topic on southbound mqtt", map[string]interface{}{
 			"topic":        topic,
 			"payload_size": len(payloadBytes),
 			"payload":      string(payloadBytes),

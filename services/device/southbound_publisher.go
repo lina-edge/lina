@@ -44,7 +44,7 @@ func (sp *SouthboundPublisher) PublishControlCommand(ctx context.Context, device
 	}
 
 	logger.WithDeviceID(deviceID).
-		InfoWithFields(ctx, "Published control command on southbound mqtt", map[string]interface{}{
+		DebugWithFields(ctx, "Published control command on southbound mqtt", map[string]interface{}{
 			"command": command.String(),
 			"reason":  reason,
 		})
@@ -65,7 +65,7 @@ func (sp *SouthboundPublisher) PublishAuthorizationResponse(ctx context.Context,
 	}
 
 	logger.WithDeviceID(deviceID).
-		InfoWithFields(ctx, "Authorization response published on southbound mqtt", map[string]interface{}{
+		DebugWithFields(ctx, "Authorization response published on southbound mqtt", map[string]interface{}{
 			"topic":  responseTopic,
 			"status": response.Status.String(),
 		})
@@ -86,7 +86,7 @@ func (sp *SouthboundPublisher) PublishInvoiceResponse(ctx context.Context, devic
 	}
 
 	logger.WithDeviceID(deviceID).
-		InfoWithFields(ctx, "Invoice response published on southbound mqtt", map[string]interface{}{
+		DebugWithFields(ctx, "Invoice response published on southbound mqtt", map[string]interface{}{
 			"topic":      responseTopic,
 			"invoice_id": response.InvoiceId,
 			"status":     response.Status.String(),
@@ -118,7 +118,7 @@ func (sp *SouthboundPublisher) PublishControlCommandWithAuthID(ctx context.Conte
 	}
 
 	logger.WithDeviceID(deviceID).
-		InfoWithFields(ctx, "Published control command on southbound mqtt", map[string]interface{}{
+		DebugWithFields(ctx, "Published control command on southbound mqtt", map[string]interface{}{
 			"command":          command.String(),
 			"reason":           reason,
 			"authorization_id": authorizationID,
@@ -152,7 +152,7 @@ func (sp *SouthboundPublisher) PublishBalanceUpdate(ctx context.Context, deviceI
 	}
 
 	logger.WithDeviceID(deviceID).
-		InfoWithFields(ctx, "Published updated balance on southbound mqtt", map[string]interface{}{
+		DebugWithFields(ctx, "Published updated balance on southbound mqtt", map[string]interface{}{
 			"available_msat": availableMsat,
 		})
 	return nil
@@ -189,7 +189,7 @@ func (sp *SouthboundPublisher) PublishInvoiceEvent(ctx context.Context, deviceID
 	}
 
 	logger.WithDeviceID(deviceID).
-		InfoWithFields(ctx, "Published invoice event on southbound mqtt", map[string]interface{}{
+		DebugWithFields(ctx, "Published invoice event on southbound mqtt", map[string]interface{}{
 			"invoice_id": invoiceID,
 			"status":     status.String(),
 		})

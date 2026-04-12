@@ -360,7 +360,7 @@ func (l *Logger) WithContext(ctx context.Context) *Logger {
 func (l *Logger) LogOperation(ctx context.Context, operation string, fn func() error) error {
 	start := time.Now()
 	opLogger := l.withField("operation", operation)
-	opLogger.Info(ctx, fmt.Sprintf("Operation %s started", strings.ReplaceAll(operation, "_", " ")))
+	opLogger.Debug(ctx, fmt.Sprintf("Operation %s started", strings.ReplaceAll(operation, "_", " ")))
 
 	err := fn()
 	duration := time.Since(start)
@@ -370,7 +370,7 @@ func (l *Logger) LogOperation(ctx context.Context, operation string, fn func() e
 			"duration": duration.String(),
 		})
 	} else {
-		opLogger.InfoWithFields(ctx, fmt.Sprintf("Operation %s completed", strings.ReplaceAll(operation, "_", " ")), map[string]interface{}{
+		opLogger.DebugWithFields(ctx, fmt.Sprintf("Operation %s completed", strings.ReplaceAll(operation, "_", " ")), map[string]interface{}{
 			"duration": duration.String(),
 		})
 	}

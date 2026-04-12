@@ -13,6 +13,7 @@ var logger = internalpkg.NewLogger("autopay")
 
 func main() {
 	ctx := context.Background()
+	internalpkg.InitLogLevel()
 
 	// Load configuration
 	cfg := LoadConfig()

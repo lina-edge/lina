@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"context"
 
 	"github.com/robertodantas/lina/internal"
 )
@@ -41,15 +41,17 @@ func LoadConfig() *Config {
 		OTELServiceName:          internal.GetEnv("OTEL_SERVICE_NAME", "lightning-service"),
 	}
 
+	ctx := context.Background()
+
 	// Validate configuration
 	if cfg.LNDHost == "" {
-		log.Fatal("LND_HOST environment variable required")
+		logger.Fatal(ctx, "LND_HOST environment variable required", nil)
 	}
 	if cfg.LNDTLSCertHex == "" {
-		log.Fatal("LND_TLS_CERT_HEX environment variable required")
+		logger.Fatal(ctx, "LND_TLS_CERT_HEX environment variable required", nil)
 	}
 	if cfg.LNDMacaroonHex == "" {
-		log.Fatal("LND_MACAROON_HEX environment variable required")
+		logger.Fatal(ctx, "LND_MACAROON_HEX environment variable required", nil)
 	}
 
 	return cfg

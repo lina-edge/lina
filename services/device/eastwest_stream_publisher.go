@@ -100,7 +100,7 @@ func (esp *EastWestStreamPublisher) PublishDeviceUsageReportedEvent(ctx context.
 
 	logger.WithDeviceID(payload.GetDeviceId()).
 		WithStream(streamName, "produce").
-		InfoWithFields(ctx, "Published DeviceEvent (usage reported) on southbound mqtt", map[string]interface{}{
+		DebugWithFields(ctx, "Published DeviceEvent (usage reported) on southbound mqtt", map[string]interface{}{
 			"stream_id": streamID,
 			"report_id": payload.GetReportId(),
 		})

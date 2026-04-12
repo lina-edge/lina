@@ -15,6 +15,7 @@ var logger = internal.NewLogger("device")
 
 func main() {
 	ctx := context.Background()
+	internal.InitLogLevel()
 
 	logger.Info(ctx, "Starting device service")
 
