@@ -282,7 +282,7 @@ func (nb *NorthboundInterface) postDeviceCredit(c *gin.Context) {
 		timestamp := time.Unix(out.CreatedAt, 0).UTC().Format(time.RFC3339)
 		if err := nb.publisher.PublishDeviceCredited(c, out.DeviceID, out.AmountMsat, out.BalanceAfter, timestamp); err != nil {
 			logger.WithDeviceID(out.DeviceID).
-				WithStream("event.ledger", "produce").
+				WithStream(internal.StreamLedger, "produce").
 				Error(c, "Failed to publish DeviceCreditedEvent via northbound REST", err)
 		}
 	}
@@ -364,7 +364,7 @@ func (nb *NorthboundInterface) postDeviceDebit(c *gin.Context) {
 			timestamp,
 		); err != nil {
 			logger.WithDeviceID(out.DeviceID).
-				WithStream("event.ledger", "produce").
+				WithStream(internal.StreamLedger, "produce").
 				Error(c, "Failed to publish DeviceDebitedEvent via northbound REST", err)
 		}
 	}

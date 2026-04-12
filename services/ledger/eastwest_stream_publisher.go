@@ -170,8 +170,7 @@ func (esp *EastWestStreamPublisher) publishLedgerEvent(ctx context.Context, ledg
 		return fmt.Errorf("failed to marshal ledger event to JSON: %w", err)
 	}
 
-	// Publish to Redis stream "event.ledger"
-	streamName := "event.ledger"
+	streamName := internal.StreamLedger
 	values := map[string]interface{}{
 		"event":     string(jsonBytes),
 		"timestamp": time.Now().UnixMilli(),

@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/robertodantas/lina/internal"
 	ledgerpb "github.com/robertodantas/lina/proto/gen/interfaces/ledger"
 	ledgermodel "github.com/robertodantas/lina/proto/gen/model/ledger"
 )
@@ -179,7 +180,7 @@ func (s *EastWestServer) CreateOrGetAuthorization(ctx context.Context, req *ledg
 		timestamp := time.Unix(entry.CreatedAt, 0).UTC().Format(time.RFC3339)
 		if err := s.publisher.PublishDeviceDebited(ctx, req.DeviceId, authID, entry.AmountMsat, entry.BalanceAfter, timestamp); err != nil {
 			logger.WithDeviceID(req.DeviceId).
-				WithStream("event.ledger", "produce").
+				WithStream(internal.StreamLedger, "produce").
 				Errorf(ctx, "Failed to publish DeviceDebitedEvent for authorization %s via eastwest gRPC: %v", authID, err)
 		}
 	}

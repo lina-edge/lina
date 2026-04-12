@@ -280,7 +280,7 @@ func (ewsi *EastWestStreamInterface) handleLightningMessage(ctx context.Context,
 
 // StartConsumptionConsumer starts consuming from the event.consumption stream
 func (ewsi *EastWestStreamInterface) StartConsumptionConsumer(ctx context.Context) error {
-	streamName := "event.consumption"
+	streamName := internal.StreamConsumption
 	streamCtx := ewsi.Context()
 
 	// Create consumer group if it doesn't exist
@@ -331,7 +331,7 @@ func (ewsi *EastWestStreamInterface) StartConsumptionConsumer(ctx context.Contex
 
 // handleConsumptionMessage decodes consumption event and delegates to handler
 func (ewsi *EastWestStreamInterface) handleConsumptionMessage(ctx context.Context, msg redis.XMessage) error {
-	streamName := "event.consumption"
+	streamName := internal.StreamConsumption
 
 	// Check idempotency FIRST using Redis: atomically check and mark message as being processed
 	// This prevents duplicate processing when the same message is picked up by both
@@ -522,7 +522,7 @@ func (ewsi *EastWestStreamInterface) startPendingMessageRetry(ctx context.Contex
 			switch streamName {
 			case internal.StreamLightning:
 				ewsi.processLightningMessagesParallelMode(streamCtx, streamName, claimed, true)
-			case "event.consumption":
+			case internal.StreamConsumption:
 				ewsi.processConsumptionMessagesParallelMode(streamCtx, streamName, claimed, true)
 			default:
 				logger.WithStream(streamName, "consume").
@@ -624,7 +624,7 @@ func (ewsi *EastWestStreamInterface) checkExpiredAuthorizations(ctx context.Cont
 		timestamp := time.Now().Format(time.RFC3339)
 		if err := publisher.PublishAuthorizationExpired(ctx, auth.AuthorizationID, deviceID, timestamp); err != nil {
 			logger.WithDeviceID(deviceID).
-				WithStream("event.ledger", "produce").
+				WithStream(internal.StreamLedger, "produce").
 				Error(ctx, "Failed to publish AuthorizationExpired event", err)
 		}
 
@@ -635,7 +635,7 @@ func (ewsi *EastWestStreamInterface) checkExpiredAuthorizations(ctx context.Cont
 			creditTimestamp := time.Unix(creditEntry.CreatedAt, 0).UTC().Format(time.RFC3339)
 			if err := publisher.PublishDeviceCredited(ctx, deviceID, creditEntry.AmountMsat, creditEntry.BalanceAfter, creditTimestamp); err != nil {
 				logger.WithDeviceID(deviceID).
-					WithStream("event.ledger", "produce").
+					WithStream(internal.StreamLedger, "produce").
 					Errorf(ctx, "Failed to publish DeviceCreditedEvent for authorization %s: %v", auth.AuthorizationID, err)
 			}
 		}

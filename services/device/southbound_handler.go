@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/robertodantas/lina/internal"
 	ledgermodel "github.com/robertodantas/lina/proto/gen/model/ledger"
 	lightningmodel "github.com/robertodantas/lina/proto/gen/model/lightning"
 	mqttpb "github.com/robertodantas/lina/proto/gen/model/mqtt"
@@ -59,7 +60,7 @@ func (sh *SouthboundHandler) HandleUsage(ctx context.Context, deviceID string, p
 	// Publish DeviceUsageReportedEvent to Redis stream (with price_per_unit from device config)
 	if err := sh.streamPublisher.PublishDeviceUsageReportedEvent(ctx, payload, sh.repo); err != nil {
 		logger.WithDeviceID(payload.GetDeviceId()).
-			WithStream("event.device", "produce").
+			WithStream(internal.StreamDevice, "produce").
 			Error(ctx, "Error publishing usage event to Redis stream on southbound mqtt", err)
 		return
 	}

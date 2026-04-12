@@ -74,7 +74,7 @@ func defaultStreamConsumerName() string {
 
 // StartDeviceConsumer starts consuming from the event.device stream
 func (ewsi *EastWestStreamInterface) StartDeviceConsumer(ctx context.Context, handler *EastWestStreamHandler) error {
-	streamName := "event.device"
+	streamName := internal.StreamDevice
 	streamCtx := ewsi.Context()
 
 	// Create consumer group if it doesn't exist
@@ -159,7 +159,7 @@ func (ewsi *EastWestStreamInterface) handleDeviceMessage(ctx context.Context, ha
 		return handler.HandleUsageReported(ctx, usageReported.GetUsage())
 
 	default:
-		logger.WithStream("event.device", "consume").
+		logger.WithStream(internal.StreamDevice, "consume").
 			Debugf(ctx, "Skipping event type: %v", deviceEvent.GetType())
 		return nil
 	}

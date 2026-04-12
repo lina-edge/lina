@@ -38,7 +38,7 @@ func (ewsi *EastWestStreamInterface) StartLedgerBalanceSubscriber(ctx context.Co
 }
 
 func (ewsi *EastWestStreamInterface) consumeLedgerBalanceEvents(ctx context.Context, handler *EastWestStreamHandler) {
-	streamName := "event.ledger"
+	streamName := internal.StreamLedger
 	lastID := "$"
 
 	logger.WithStream(streamName, "consume").
@@ -119,10 +119,14 @@ func (ewsi *EastWestStreamInterface) consumeLightningInvoiceEvents(ctx context.C
 		default:
 		}
 
+		// XREAD STREAMS key [key ...] id [id ...] — go-redis Streams must be
+		// [key1, key2, id1, id2], not [key1, id1, key2, id2].
 		streams, err := ewsi.XReadWithSpan(ctx, "", &redis.XReadArgs{
 			Streams: []string{
-				internal.StreamLightning, lastSettled,
-				internal.StreamLightningEphemeral, lastEphemeral,
+				internal.StreamLightning,
+				internal.StreamLightningEphemeral,
+				lastSettled,
+				lastEphemeral,
 			},
 			Count: 20,
 			Block: 5 * time.Second,

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/robertodantas/lina/internal"
 	consumptionpb "github.com/robertodantas/lina/proto/gen/model/consumption"
 	lightningmodel "github.com/robertodantas/lina/proto/gen/model/lightning"
 )
@@ -63,7 +64,7 @@ func (esh *EastWestStreamHandler) HandleInvoiceSettled(ctx context.Context, sett
 	} else if ok {
 		if kind == "credit" {
 			logger.WithDeviceID(deviceID).
-				WithStream("event.lightning", "consume").
+				WithStream(internal.StreamLightning, "consume").
 				DebugWithFields(ctx, "Invoice already credited, skipping", map[string]interface{}{
 					"invoice_id": invoiceID,
 				})
@@ -95,7 +96,7 @@ func (esh *EastWestStreamHandler) HandleInvoiceSettled(ctx context.Context, sett
 	}
 
 	logger.WithDeviceID(deviceID).
-		WithStream("event.lightning", "consume").
+		WithStream(internal.StreamLightning, "consume").
 		DebugWithFields(ctx, "Credited device from invoice", map[string]interface{}{
 			"invoice_id":    invoiceID,
 			"amount_msat":   entry.AmountMsat,
@@ -108,7 +109,7 @@ func (esh *EastWestStreamHandler) HandleInvoiceSettled(ctx context.Context, sett
 	timestamp := time.Unix(entry.CreatedAt, 0).UTC().Format(time.RFC3339)
 	if err := esh.publisher.PublishDeviceCredited(ctx, entry.DeviceID, entry.AmountMsat, entry.BalanceAfter, timestamp); err != nil {
 		logger.WithDeviceID(deviceID).
-			WithStream("event.ledger", "produce").
+			WithStream(internal.StreamLedger, "produce").
 			Errorf(ctx, "Failed to publish DeviceCreditedEvent for invoice %s: %v", invoiceID, err)
 	}
 
@@ -128,7 +129,7 @@ func (esh *EastWestStreamHandler) HandleDeviceConsumptionRecorded(ctx context.Co
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	logger.WithStream("event.consumption", "consume").
+	logger.WithStream(internal.StreamConsumption, "consume").
 		WithDeviceID(recorded.GetDeviceId()).
 		DebugWithFields(ctx, "Consumption received", map[string]interface{}{
 			"debit_msat": recorded.GetDebitMsat(),
@@ -155,7 +156,7 @@ func (esh *EastWestStreamHandler) HandleDeviceConsumptionRecorded(ctx context.Co
 	// Publish AuthorizationDebited event
 	if err := esh.publisher.PublishAuthorizationDebited(ctx, result.authorizationID, result.deviceID, result.actualDebit, result.newRemaining, timestamp); err != nil {
 		logger.WithDeviceID(result.deviceID).
-			WithStream("event.ledger", "produce").
+			WithStream(internal.StreamLedger, "produce").
 			Error(ctx, "Failed to publish AuthorizationDebited event", err)
 	}
 
@@ -166,7 +167,7 @@ func (esh *EastWestStreamHandler) HandleDeviceConsumptionRecorded(ctx context.Co
 		// Publish AuthorizationCompleted event
 		if err := esh.publisher.PublishAuthorizationCompleted(ctx, result.authorizationID, result.deviceID, timestamp); err != nil {
 			logger.WithDeviceID(result.deviceID).
-				WithStream("event.ledger", "produce").
+				WithStream(internal.StreamLedger, "produce").
 				Error(ctx, "Failed to publish AuthorizationCompleted event", err)
 		}
 	}
@@ -176,7 +177,7 @@ func (esh *EastWestStreamHandler) HandleDeviceConsumptionRecorded(ctx context.Co
 		overflowTimestamp := time.Unix(result.overflowEntry.CreatedAt, 0).UTC().Format(time.RFC3339)
 		if err := esh.publisher.PublishDeviceDebited(ctx, result.deviceID, result.authorizationID, result.overflowEntry.AmountMsat, result.overflowEntry.BalanceAfter, overflowTimestamp); err != nil {
 			logger.WithDeviceID(result.deviceID).
-				WithStream("event.ledger", "produce").
+				WithStream(internal.StreamLedger, "produce").
 				Error(ctx, "Failed to publish DeviceDebited event for overflow", err)
 		}
 	}
@@ -196,7 +197,7 @@ func (esh *EastWestStreamHandler) HandleDeviceConsumptionRecorded(ctx context.Co
 		t, err := parseTimestamp(ts)
 		if err != nil {
 			logger.WithDeviceID(recorded.GetDeviceId()).
-				WithStream("event.consumption", "latency").
+				WithStream(internal.StreamConsumption, "latency").
 				Warnf(ctx, "Failed to parse timestamp for latency metric: %v", err)
 			return nil
 		}
@@ -254,7 +255,7 @@ func (esh *EastWestStreamHandler) processConsumptionWithTx(ctx context.Context, 
 			timestamp := time.Now().Format(time.RFC3339)
 			if err := esh.publisher.PublishAuthorizationDebitFailed(ctx, "", deviceID, recorded.GetDebitMsat(), 0, "NO_ACTIVE_AUTHORIZATION", timestamp); err != nil {
 				logger.WithDeviceID(deviceID).
-					WithStream("event.ledger", "produce").
+					WithStream(internal.StreamLedger, "produce").
 					Error(ctx, "Failed to publish AuthorizationDebitFailed event", err)
 			}
 			RecordAuthorizationDebitFailed(ctx)

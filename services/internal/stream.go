@@ -24,9 +24,11 @@ var (
 
 var logger = NewLogger("internal")
 
-// StreamLightning holds invoice-settled events (ledger + device consume; not time-trimmed here).
-// StreamLightningEphemeral holds invoice created/expired; the lightning service time-trims this stream.
+// Redis stream names (event.*) — single source of truth for XADD/XREADGROUP and logging.
 const (
+	StreamLedger             = "event.ledger"
+	StreamConsumption        = "event.consumption"
+	StreamDevice             = "event.device"
 	StreamLightning          = "event.lightning"
 	StreamLightningEphemeral = "event.lightning.ephemeral"
 )

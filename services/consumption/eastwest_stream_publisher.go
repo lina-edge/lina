@@ -9,6 +9,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"google.golang.org/protobuf/encoding/protojson"
 
+	"github.com/robertodantas/lina/internal"
 	consumptionpb "github.com/robertodantas/lina/proto/gen/model/consumption"
 )
 
@@ -58,8 +59,7 @@ func (esp *EastWestStreamPublisher) PublishConsumptionEvent(ctx context.Context,
 		return fmt.Errorf("failed to marshal consumption event to JSON: %w", err)
 	}
 
-	// Publish to Redis stream "event.consumption"
-	streamName := "event.consumption"
+	streamName := internal.StreamConsumption
 	values := map[string]interface{}{
 		"event":     string(jsonBytes),
 		"timestamp": time.Now().UnixMilli(),
@@ -146,7 +146,7 @@ func (esp *EastWestStreamPublisher) publishOutboxEvents(ctx context.Context) err
 
 		if err := esp.PublishConsumptionEvent(publishCtx, e.ReportID, e.DeviceID, e.DebitMsat, timestamp); err != nil {
 			logger.WithDeviceID(e.DeviceID).
-				WithStream("event.consumption", "produce").
+				WithStream(internal.StreamConsumption, "produce").
 				Errorf(ctx, "Failed to publish event for report %s: %v", e.ReportID, err)
 			continue
 		}
@@ -158,7 +158,7 @@ func (esp *EastWestStreamPublisher) publishOutboxEvents(ctx context.Context) err
 	}
 
 	if len(events) > 0 {
-		logger.WithStream("event.consumption", "produce").
+		logger.WithStream(internal.StreamConsumption, "produce").
 			DebugWithFields(ctx, "Published events from outbox", map[string]interface{}{
 				"count": len(events),
 			})

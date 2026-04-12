@@ -8,6 +8,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/protobuf/encoding/protojson"
 
+	"github.com/robertodantas/lina/internal"
 	devicepb "github.com/robertodantas/lina/proto/gen/model/device"
 	mqttpb "github.com/robertodantas/lina/proto/gen/model/mqtt"
 )
@@ -81,8 +82,7 @@ func (esp *EastWestStreamPublisher) PublishDeviceUsageReportedEvent(ctx context.
 		return fmt.Errorf("failed to marshal device event to JSON: %w", err)
 	}
 
-	// Publish to Redis stream "event.device"
-	streamName := "event.device"
+	streamName := internal.StreamDevice
 	values := map[string]interface{}{
 		"event":     string(jsonBytes),
 		"timestamp": time.Now().UnixMilli(),

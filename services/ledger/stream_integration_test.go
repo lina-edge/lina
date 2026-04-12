@@ -46,7 +46,7 @@ func TestStreamHandlerPublishesLedgerEvents(t *testing.T) {
 	err = publisher.PublishDeviceDebited(ctx, "device-stream-1", "auth-123", 250, 750, ts)
 	require.NoError(t, err)
 
-	entries := readStreamEntries(t, streamClient.Client(), ctx, "event.ledger")
+	entries := readStreamEntries(t, streamClient.Client(), ctx, internal.StreamLedger)
 	require.Len(t, entries, 2)
 
 	assertLedgerEvent(t, entries[0], ledgermodel.LedgerEventType_LEDGER_EVENT_TYPE_DEVICE_CREDITED)

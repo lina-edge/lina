@@ -90,7 +90,7 @@ func main() {
 	// Start device event consumer (consumes from event.device stream)
 	go func() {
 		if err := streamInterface.StartDeviceConsumer(serviceCtx, handler); err != nil && err != context.Canceled {
-			logger.WithStream("event.device", "consume").
+			logger.WithStream(internal.StreamDevice, "consume").
 				Error(serviceCtx, "Device consumer error", err)
 		}
 	}()
@@ -98,7 +98,7 @@ func main() {
 	// Start outbox publisher (publishes to event.consumption stream)
 	go func() {
 		if err := publisher.StartOutboxPublisher(serviceCtx); err != nil && err != context.Canceled {
-			logger.WithStream("event.consumption", "produce").
+			logger.WithStream(internal.StreamConsumption, "produce").
 				Error(serviceCtx, "Outbox publisher error", err)
 		}
 	}()

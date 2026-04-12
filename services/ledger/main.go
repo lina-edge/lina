@@ -150,7 +150,7 @@ func main() {
 	// Start consumption consumer in a goroutine
 	go func() {
 		if err := streamInterface.StartConsumptionConsumer(serviceCtx); err != nil && err != context.Canceled {
-			logger.WithStream("event.consumption", "consume").
+			logger.WithStream(internal.StreamConsumption, "consume").
 				Error(serviceCtx, "Consumption consumer error", err)
 		}
 	}()
@@ -158,7 +158,7 @@ func main() {
 	// Start lightning consumer in a goroutine
 	go func() {
 		if err := streamInterface.StartLightningConsumer(serviceCtx); err != nil && err != context.Canceled {
-			logger.WithStream("event.lightning", "consume").
+			logger.WithStream(internal.StreamLightning, "consume").
 				Error(serviceCtx, "Lightning consumer error", err)
 		}
 	}()
