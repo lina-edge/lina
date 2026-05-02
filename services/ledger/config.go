@@ -23,6 +23,7 @@ type Config struct {
 	StreamConsumerName string
 	ConsumeParallelism int
 	StreamReadCount    int
+	ConsumeBatchSize   int // SQLite only: events per transaction (0/1 = off)
 
 	// OpenTelemetry / Jaeger
 	OTELExporterOTLPEndpoint string
@@ -55,6 +56,9 @@ func LoadConfig() Config {
 		// to avoid goroutines spinning on the single connection pool while waiting to write.
 		ConsumeParallelism: internal.StreamParallelismFromEnv("LEDGER_STREAM_PARALLELISM", 2),
 		StreamReadCount:    internal.StreamReadCountFromEnv("LEDGER_STREAM_READ_COUNT", 100),
+		// SQLite batch: number of consumption events to commit in one transaction (amortises the WAL
+		// commit cost). Only active when REPOSITORY_TYPE=sqlite. 0/1 = per-event (off). Default 10.
+		ConsumeBatchSize: internal.IntEnv("LEDGER_CONSUME_BATCH_SIZE", 10),
 
 		// OpenTelemetry / Jaeger
 		OTELExporterOTLPEndpoint: internal.GetEnv("OTEL_EXPORTER_OTLP_ENDPOINT", ""),

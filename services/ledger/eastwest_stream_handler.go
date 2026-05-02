@@ -150,61 +150,8 @@ func (esh *EastWestStreamHandler) HandleDeviceConsumptionRecorded(ctx context.Co
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	// Publish events after successful commit
-	timestamp := time.Now().Format(time.RFC3339)
-
-	// Publish AuthorizationDebited event
-	if err := esh.publisher.PublishAuthorizationDebited(ctx, result.authorizationID, result.deviceID, result.actualDebit, result.newRemaining, timestamp); err != nil {
-		logger.WithDeviceID(result.deviceID).
-			WithStream(internal.StreamLedger, "produce").
-			Error(ctx, "Failed to publish AuthorizationDebited event", err)
-	}
-
-	// Record metrics
-	RecordAuthorizationDebited(ctx)
-
-	if result.newStatus == "completed" {
-		// Publish AuthorizationCompleted event
-		if err := esh.publisher.PublishAuthorizationCompleted(ctx, result.authorizationID, result.deviceID, timestamp); err != nil {
-			logger.WithDeviceID(result.deviceID).
-				WithStream(internal.StreamLedger, "produce").
-				Error(ctx, "Failed to publish AuthorizationCompleted event", err)
-		}
-	}
-
-	// Publish DeviceDebited event for overflow if any
-	if result.overflowEntry != nil {
-		overflowTimestamp := time.Unix(result.overflowEntry.CreatedAt, 0).UTC().Format(time.RFC3339)
-		if err := esh.publisher.PublishDeviceDebited(ctx, result.deviceID, result.authorizationID, result.overflowEntry.AmountMsat, result.overflowEntry.BalanceAfter, overflowTimestamp); err != nil {
-			logger.WithDeviceID(result.deviceID).
-				WithStream(internal.StreamLedger, "produce").
-				Error(ctx, "Failed to publish DeviceDebited event for overflow", err)
-		}
-	}
-
-	// Record latency only for successfully processed consumptions (no retries/failures).
-	// The timestamp represents the original device/MQTT timestamp from when the usage was reported.
-	// This measures end-to-end latency: device usage reported → ledger debit completed.
-	if ts := recorded.GetTimestamp(); ts != "" {
-		// Parse timestamp (support both RFC3339 and RFC3339Nano for safety)
-		parseTimestamp := func(ts string) (time.Time, error) {
-			if t, err := time.Parse(time.RFC3339Nano, ts); err == nil {
-				return t, nil
-			}
-			return time.Parse(time.RFC3339, ts)
-		}
-
-		t, err := parseTimestamp(ts)
-		if err != nil {
-			logger.WithDeviceID(recorded.GetDeviceId()).
-				WithStream(internal.StreamConsumption, "latency").
-				Warnf(ctx, "Failed to parse timestamp for latency metric: %v", err)
-			return nil
-		}
-
-		latencySeconds := time.Since(t).Seconds()
-		RecordDebitLatency(ctx, latencySeconds)
-	}
+	// Publish events and record metrics/latency after successful commit.
+	esh.publishConsumptionResult(ctx, result)
 
 	return nil
 }
@@ -225,12 +172,13 @@ func (e *ExpectedFailureError) Unwrap() error {
 
 // processConsumptionResult holds the results of processing a consumption for event publishing
 type processConsumptionResult struct {
-	authorizationID string
-	deviceID        string
-	actualDebit     int64
-	newRemaining    int64
-	newStatus       string
-	overflowEntry   *EntryResponse
+	authorizationID   string
+	deviceID          string
+	actualDebit       int64
+	newRemaining      int64
+	newStatus         string
+	overflowEntry     *EntryResponse
+	recordedTimestamp string // original device timestamp; used for end-to-end latency tracking
 }
 
 // processConsumptionWithTx debits from an authorization using the provided transaction
@@ -312,11 +260,58 @@ func (esh *EastWestStreamHandler) processConsumptionWithTx(ctx context.Context, 
 	}
 
 	return &processConsumptionResult{
-		authorizationID: authorizationID,
-		deviceID:        deviceID,
-		actualDebit:     actualDebit,
-		newRemaining:    newRemaining,
-		newStatus:       newStatus,
-		overflowEntry:   overflowEntry,
+		authorizationID:   authorizationID,
+		deviceID:          deviceID,
+		actualDebit:       actualDebit,
+		newRemaining:      newRemaining,
+		newStatus:         newStatus,
+		overflowEntry:     overflowEntry,
+		recordedTimestamp: recorded.GetTimestamp(),
 	}, nil
+}
+
+// publishConsumptionResult publishes all post-commit events for a successfully processed consumption.
+// Safe to call from both the single-message path and the batch path.
+func (esh *EastWestStreamHandler) publishConsumptionResult(ctx context.Context, result *processConsumptionResult) {
+	timestamp := time.Now().Format(time.RFC3339)
+
+	if err := esh.publisher.PublishAuthorizationDebited(ctx, result.authorizationID, result.deviceID, result.actualDebit, result.newRemaining, timestamp); err != nil {
+		logger.WithDeviceID(result.deviceID).
+			WithStream(internal.StreamLedger, "produce").
+			Error(ctx, "Failed to publish AuthorizationDebited event", err)
+	}
+	RecordAuthorizationDebited(ctx)
+
+	if result.newStatus == "completed" {
+		if err := esh.publisher.PublishAuthorizationCompleted(ctx, result.authorizationID, result.deviceID, timestamp); err != nil {
+			logger.WithDeviceID(result.deviceID).
+				WithStream(internal.StreamLedger, "produce").
+				Error(ctx, "Failed to publish AuthorizationCompleted event", err)
+		}
+	}
+
+	if result.overflowEntry != nil {
+		overflowTimestamp := time.Unix(result.overflowEntry.CreatedAt, 0).UTC().Format(time.RFC3339)
+		if err := esh.publisher.PublishDeviceDebited(ctx, result.deviceID, result.authorizationID, result.overflowEntry.AmountMsat, result.overflowEntry.BalanceAfter, overflowTimestamp); err != nil {
+			logger.WithDeviceID(result.deviceID).
+				WithStream(internal.StreamLedger, "produce").
+				Error(ctx, "Failed to publish DeviceDebited event for overflow", err)
+		}
+	}
+
+	if ts := result.recordedTimestamp; ts != "" {
+		parseTimestamp := func(s string) (time.Time, error) {
+			if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
+				return t, nil
+			}
+			return time.Parse(time.RFC3339, s)
+		}
+		if t, err := parseTimestamp(ts); err == nil {
+			RecordDebitLatency(ctx, time.Since(t).Seconds())
+		} else {
+			logger.WithDeviceID(result.deviceID).
+				WithStream(internal.StreamConsumption, "latency").
+				Warnf(ctx, "Failed to parse timestamp for latency metric: %v", err)
+		}
+	}
 }

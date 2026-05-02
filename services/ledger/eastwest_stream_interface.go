@@ -119,6 +119,10 @@ func (ewsi *EastWestStreamInterface) processConsumptionMessagesParallel(streamCt
 }
 
 func (ewsi *EastWestStreamInterface) processConsumptionMessagesParallelMode(streamCtx context.Context, streamName string, msgs []redis.XMessage, pendingRetry bool) {
+	if ewsi.cfg.ConsumeBatchSize > 1 && ewsi.cfg.RepositoryType == "sqlite" {
+		ewsi.processConsumptionMessagesBatch(streamCtx, streamName, msgs, pendingRetry)
+		return
+	}
 	internal.RunStreamMessagesParallel(ewsi.cfg.ConsumeParallelism, msgs, func(msg redis.XMessage) {
 		if age, ok := messageAgeSecondsFromStreamID(msg.ID, time.Now()); ok {
 			RecordStreamMessageAge(streamCtx, streamName, "handle_consumption", age, pendingRetry)
