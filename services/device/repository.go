@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/robertodantas/lina/internal"
@@ -28,6 +29,7 @@ type Device struct {
 type DeviceRepository struct {
 	db        *sql.DB
 	sqlTracer *internal.SQLTracer
+	cache     sync.Map // map[deviceID string]*Device — read-through cache for the hot MQTT path
 }
 
 // NewDeviceRepository creates and initializes the SQLite database
@@ -100,13 +102,19 @@ func (r *DeviceRepository) CreateDevice(ctx context.Context, device *Device) err
 		return fmt.Errorf("failed to insert device: %w", err)
 	}
 
+	r.cache.Store(device.DeviceID, device)
 	logger.WithDeviceID(device.DeviceID).
 		Info(ctx, "Device created in database")
 	return nil
 }
 
-// GetDevice retrieves a device by ID
+// GetDevice retrieves a device by ID.
+// Checks an in-memory cache first to avoid a DB round-trip on the high-frequency MQTT usage path.
 func (r *DeviceRepository) GetDevice(ctx context.Context, deviceID string) (*Device, error) {
+	if v, ok := r.cache.Load(deviceID); ok {
+		return v.(*Device), nil
+	}
+
 	query := `
 	SELECT device_id, measurement_unit, unit_price_msat, reporting_strategy,
 	       reporting_interval, heartbeat_interval, authorize_request_msat, timestamp
@@ -144,6 +152,7 @@ func (r *DeviceRepository) GetDevice(ctx context.Context, deviceID string) (*Dev
 		return nil, fmt.Errorf("failed to parse timestamp: %w", err)
 	}
 
+	r.cache.Store(deviceID, &device)
 	return &device, nil
 }
 
@@ -188,6 +197,7 @@ func (r *DeviceRepository) UpdateDevice(ctx context.Context, device *Device) err
 		return fmt.Errorf("device not found: %s", device.DeviceID)
 	}
 
+	r.cache.Store(device.DeviceID, device)
 	logger.WithDeviceID(device.DeviceID).
 		Info(ctx, "Device updated in database")
 	return nil
@@ -493,6 +503,7 @@ func (r *DeviceRepository) CreateDevicesBatch(ctx context.Context, devices []*De
 		if err == nil && rowsAffected > 0 {
 			insertedCount++
 		}
+		r.cache.Store(device.DeviceID, device)
 	}
 
 	// Commit transaction

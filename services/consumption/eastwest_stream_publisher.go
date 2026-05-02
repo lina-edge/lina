@@ -140,9 +140,13 @@ func (esp *EastWestStreamPublisher) publishOutboxEvents(ctx context.Context) err
 			publishCtx = ctx
 		}
 
-		// For outbox replay, use the stored created_at (record time) from consumption_records
-		// Use RFC3339Nano to preserve sub-second precision for accurate latency measurements
-		timestamp := time.Unix(e.CreatedAt, 0).UTC().Format(time.RFC3339Nano)
+		// Use the original device/MQTT timestamp so latency is measured from when the device
+		// reported usage, not from when the consumption service created the record.
+		// Fall back to created_at only if the stored timestamp is missing.
+		timestamp := e.Timestamp
+		if timestamp == "" {
+			timestamp = time.Unix(e.CreatedAt, 0).UTC().Format(time.RFC3339Nano)
+		}
 
 		if err := esp.PublishConsumptionEvent(publishCtx, e.ReportID, e.DeviceID, e.DebitMsat, timestamp); err != nil {
 			logger.WithDeviceID(e.DeviceID).
