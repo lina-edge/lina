@@ -16,10 +16,20 @@ import (
 )
 
 type sqliteLedgerTx struct {
-	tx *sql.Tx
+	tx        *sql.Tx
+	ctx       context.Context
+	sqlTracer *internal.SQLTracer
 }
 
-func (t *sqliteLedgerTx) Commit() error   { return t.tx.Commit() }
+func (t *sqliteLedgerTx) Commit() error {
+	err := t.tx.Commit()
+	if err != nil {
+		t.sqlTracer.LogSQLError(t.ctx, "[repository] commit tx", []attribute.KeyValue{
+			attribute.String("db.operation", "COMMIT"),
+		}, err)
+	}
+	return err
+}
 func (t *sqliteLedgerTx) Rollback() error { return t.tx.Rollback() }
 
 func expectSqliteTx(tx LedgerTx) (*sql.Tx, error) {
@@ -42,8 +52,6 @@ func mapSQLRowErr(err error) error {
 	}
 	return err
 }
-
-
 
 // ledgerRepoSQLite is the SQLite implementation of LedgerRepository.
 type ledgerRepoSQLite struct {
@@ -145,7 +153,6 @@ func openLedgerRepoSQLite(dbPath string, busyTimeoutMS int) (LedgerRepository, e
 
 	return repo, nil
 }
-
 
 /*
    =========================================
@@ -280,6 +287,10 @@ func (r *ledgerRepoSQLite) ListLedgerEntries(ctx context.Context, deviceID strin
 			e.CorrelationID = corr.String
 		}
 		resp = append(resp, e)
+	}
+	if err := rows.Err(); err != nil {
+		r.sqlTracer.LogSQLError(ctx, "[repository] list ledger entries rows", attrs, err)
+		return nil, err
 	}
 
 	return resp, nil
@@ -664,6 +675,10 @@ func (r *ledgerRepoSQLite) GetExpiredAuthorizations(ctx context.Context, expires
 		}
 		expired = append(expired, auth)
 	}
+	if err := rows.Err(); err != nil {
+		r.sqlTracer.LogSQLError(ctx, "[repository] get expired authorizations rows", attrs, err)
+		return nil, err
+	}
 
 	return expired, nil
 }
@@ -776,6 +791,10 @@ func (r *ledgerRepoSQLite) ListAuthorizations(ctx context.Context, deviceID stri
 		}
 		resp = append(resp, auth)
 	}
+	if err := rows.Err(); err != nil {
+		r.sqlTracer.LogSQLError(ctx, "[repository] list authorizations rows", attrs, err)
+		return nil, err
+	}
 
 	return resp, nil
 }
@@ -788,9 +807,13 @@ func (r *ledgerRepoSQLite) BeginTx(ctx context.Context, opts *LedgerTxOptions) (
 	}
 	tx, err := r.db.BeginTx(ctx, o)
 	if err != nil {
+		r.sqlTracer.LogSQLError(ctx, "[repository] begin tx", []attribute.KeyValue{
+			attribute.String("db.operation", "BEGIN"),
+			attribute.Bool("db.transaction.read_only", opts != nil && opts.ReadOnly),
+		}, err)
 		return nil, err
 	}
-	return &sqliteLedgerTx{tx: tx}, nil
+	return &sqliteLedgerTx{tx: tx, ctx: ctx, sqlTracer: r.sqlTracer}, nil
 }
 
 // Close closes the database connection.

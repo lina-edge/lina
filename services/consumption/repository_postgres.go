@@ -78,6 +78,12 @@ func openConsumptionRepoPostgres(dsn string, maxOpenConns int) (ConsumptionRepos
 func (r *consumptionRepoPG) CreateConsumptionRecord(ctx context.Context, reportID, deviceID string, debitMsat int64, fractionalMsat float64, measure float64, pricePerUnitMsat int64, unit, timestamp string, traceContext map[string]string) (inserted bool, err error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
+		r.sqlTracer.LogSQLError(ctx, "[repository] begin create consumption record", []attribute.KeyValue{
+			attribute.String("db.operation", "BEGIN"),
+			attribute.String("db.table", "consumption_records"),
+			attribute.String("report.id", reportID),
+			attribute.String("device.id", deviceID),
+		}, err)
 		return false, fmt.Errorf("begin tx: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
@@ -106,6 +112,12 @@ func (r *consumptionRepoPG) CreateConsumptionRecord(ctx context.Context, reportI
 	}
 	n, err := res.RowsAffected()
 	if err != nil {
+		r.sqlTracer.LogSQLError(ctx, "[repository] create consumption rows affected", []attribute.KeyValue{
+			attribute.String("db.operation", "ROWS AFFECTED"),
+			attribute.String("db.table", "consumption_records"),
+			attribute.String("report.id", reportID),
+			attribute.String("device.id", deviceID),
+		}, err)
 		return false, fmt.Errorf("rows affected: %w", err)
 	}
 	if n == 0 {
@@ -132,6 +144,12 @@ func (r *consumptionRepoPG) CreateConsumptionRecord(ctx context.Context, reportI
 	}
 
 	if err := tx.Commit(); err != nil {
+		r.sqlTracer.LogSQLError(ctx, "[repository] commit create consumption record", []attribute.KeyValue{
+			attribute.String("db.operation", "COMMIT"),
+			attribute.String("db.table", "consumption_records"),
+			attribute.String("report.id", reportID),
+			attribute.String("device.id", deviceID),
+		}, err)
 		return false, fmt.Errorf("commit: %w", err)
 	}
 	return true, nil
@@ -169,6 +187,7 @@ func (r *consumptionRepoPG) GetUnpublishedOutboxEvents(ctx context.Context, limi
 		events = append(events, e)
 	}
 	if err := rows.Err(); err != nil {
+		r.sqlTracer.LogSQLError(ctx, "[repository] get unpublished outbox events rows", attrs, err)
 		return nil, fmt.Errorf("error iterating outbox events: %w", err)
 	}
 	return events, nil
@@ -206,6 +225,11 @@ func (r *consumptionRepoPG) CleanupOutbox(ctx context.Context, retentionDays int
 	}
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
+		r.sqlTracer.LogSQLError(ctx, "[repository] cleanup outbox rows affected", []attribute.KeyValue{
+			attribute.String("db.operation", "ROWS AFFECTED"),
+			attribute.String("db.table", "consumption_outbox"),
+			attribute.Int("retention_days", retentionDays),
+		}, err)
 		return 0, fmt.Errorf("failed to get rows affected: %w", err)
 	}
 	return rowsAffected, nil
@@ -261,6 +285,7 @@ func (r *consumptionRepoPG) ListDeviceConsumptions(ctx context.Context, deviceID
 		results = append(results, resp)
 	}
 	if err := rows.Err(); err != nil {
+		r.sqlTracer.LogSQLError(ctx, "[repository] list device consumptions rows", attrs, err)
 		return nil, fmt.Errorf("error iterating consumptions: %w", err)
 	}
 	return results, nil

@@ -16,10 +16,20 @@ import (
 )
 
 type pgLedgerTx struct {
-	tx *sql.Tx
+	tx        *sql.Tx
+	ctx       context.Context
+	sqlTracer *internal.SQLTracer
 }
 
-func (t *pgLedgerTx) Commit() error   { return t.tx.Commit() }
+func (t *pgLedgerTx) Commit() error {
+	err := t.tx.Commit()
+	if err != nil {
+		t.sqlTracer.LogSQLError(t.ctx, "[repository] commit tx", []attribute.KeyValue{
+			attribute.String("db.operation", "COMMIT"),
+		}, err)
+	}
+	return err
+}
 func (t *pgLedgerTx) Rollback() error { return t.tx.Rollback() }
 
 func expectPgTx(tx LedgerTx) (*sql.Tx, error) {
@@ -236,6 +246,10 @@ func (r *ledgerRepoPG) ListLedgerEntries(ctx context.Context, deviceID string, c
 			e.CorrelationID = corr.String
 		}
 		resp = append(resp, e)
+	}
+	if err := rows.Err(); err != nil {
+		r.sqlTracer.LogSQLError(ctx, "[repository] list ledger entries rows", attrs, err)
+		return nil, err
 	}
 	return resp, nil
 }
@@ -583,6 +597,10 @@ func (r *ledgerRepoPG) GetExpiredAuthorizations(ctx context.Context, expiresBefo
 		}
 		expired = append(expired, auth)
 	}
+	if err := rows.Err(); err != nil {
+		r.sqlTracer.LogSQLError(ctx, "[repository] get expired authorizations rows", attrs, err)
+		return nil, err
+	}
 	return expired, nil
 }
 
@@ -675,6 +693,10 @@ func (r *ledgerRepoPG) ListAuthorizations(ctx context.Context, deviceID string, 
 		}
 		resp = append(resp, auth)
 	}
+	if err := rows.Err(); err != nil {
+		r.sqlTracer.LogSQLError(ctx, "[repository] list authorizations rows", attrs, err)
+		return nil, err
+	}
 	return resp, nil
 }
 
@@ -685,9 +707,13 @@ func (r *ledgerRepoPG) BeginTx(ctx context.Context, opts *LedgerTxOptions) (Ledg
 	}
 	tx, err := r.db.BeginTx(ctx, o)
 	if err != nil {
+		r.sqlTracer.LogSQLError(ctx, "[repository] begin tx", []attribute.KeyValue{
+			attribute.String("db.operation", "BEGIN"),
+			attribute.Bool("db.transaction.read_only", opts != nil && opts.ReadOnly),
+		}, err)
 		return nil, err
 	}
-	return &pgLedgerTx{tx: tx}, nil
+	return &pgLedgerTx{tx: tx, ctx: ctx, sqlTracer: r.sqlTracer}, nil
 }
 
 func (r *ledgerRepoPG) Close() error {

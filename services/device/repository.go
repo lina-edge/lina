@@ -69,6 +69,10 @@ func NewDeviceRepository(ctx context.Context, dbPath string, busyTimeoutMS int) 
 	// Add device_secret_hash column if it doesn't exist yet (idempotent migration).
 	if _, err := db.ExecContext(ctx, `ALTER TABLE devices ADD COLUMN device_secret_hash TEXT NOT NULL DEFAULT ''`); err != nil {
 		if !strings.Contains(err.Error(), "duplicate column name") {
+			repo.sqlTracer.LogSQLError(ctx, "[repository] add device secret column", []attribute.KeyValue{
+				attribute.String("db.operation", "ALTER TABLE"),
+				attribute.String("db.table", "devices"),
+			}, err)
 			return nil, fmt.Errorf("failed to add device_secret_hash column: %w", err)
 		}
 	}
@@ -190,6 +194,11 @@ func (r *DeviceRepository) UpdateDevice(ctx context.Context, device *Device) err
 
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
+		r.sqlTracer.LogSQLError(ctx, "[repository] update device rows affected", []attribute.KeyValue{
+			attribute.String("db.operation", "ROWS AFFECTED"),
+			attribute.String("db.table", "devices"),
+			attribute.String("device.id", device.DeviceID),
+		}, err)
 		return fmt.Errorf("failed to get rows affected: %w", err)
 	}
 
@@ -249,6 +258,7 @@ func (r *DeviceRepository) ListDevices(ctx context.Context) ([]*Device, error) {
 	}
 
 	if err := rows.Err(); err != nil {
+		r.sqlTracer.LogSQLError(ctx, "[repository] list devices rows", attrs, err)
 		return nil, fmt.Errorf("error iterating devices: %w", err)
 	}
 
@@ -311,6 +321,7 @@ func (r *DeviceRepository) ListDevicesPage(ctx context.Context, limit, offset in
 	}
 
 	if err := rows.Err(); err != nil {
+		r.sqlTracer.LogSQLError(ctx, "[repository] list devices page rows", attrs, err)
 		return nil, fmt.Errorf("error iterating devices page: %w", err)
 	}
 
@@ -445,6 +456,7 @@ func (r *DeviceRepository) listDevicesByIDsChunk(ctx context.Context, deviceIDs 
 	}
 
 	if err := rows.Err(); err != nil {
+		r.sqlTracer.LogSQLError(ctx, "[repository] list devices by ids rows", attrs, err)
 		return nil, fmt.Errorf("error iterating devices: %w", err)
 	}
 
@@ -461,6 +473,11 @@ func (r *DeviceRepository) CreateDevicesBatch(ctx context.Context, devices []*De
 	// Start transaction
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
+		r.sqlTracer.LogSQLError(ctx, "[repository] begin create devices batch", []attribute.KeyValue{
+			attribute.String("db.operation", "BEGIN"),
+			attribute.String("db.table", "devices"),
+			attribute.Int("batch.size", len(devices)),
+		}, err)
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
@@ -474,6 +491,11 @@ func (r *DeviceRepository) CreateDevicesBatch(ctx context.Context, devices []*De
 
 	stmt, err := tx.PrepareContext(ctx, query)
 	if err != nil {
+		r.sqlTracer.LogSQLError(ctx, "[repository] prepare create devices batch", []attribute.KeyValue{
+			attribute.String("db.operation", "PREPARE"),
+			attribute.String("db.table", "devices"),
+			attribute.Int("batch.size", len(devices)),
+		}, err)
 		return fmt.Errorf("failed to prepare statement: %w", err)
 	}
 	defer stmt.Close()
@@ -493,13 +515,23 @@ func (r *DeviceRepository) CreateDevicesBatch(ctx context.Context, devices []*De
 		)
 		if err != nil {
 			// Log error but continue with other devices
-			logger.WithDeviceID(device.DeviceID).
-				Errorf(ctx, "Failed to insert device (non-constraint error): %v", err)
+			r.sqlTracer.LogSQLError(ctx, "[repository] create device in batch", []attribute.KeyValue{
+				attribute.String("db.operation", "INSERT OR IGNORE"),
+				attribute.String("db.table", "devices"),
+				attribute.String("device.id", device.DeviceID),
+			}, err)
 			continue
 		}
 
 		// Check if row was actually inserted (rowsAffected > 0)
 		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			r.sqlTracer.LogSQLError(ctx, "[repository] batch create device rows affected", []attribute.KeyValue{
+				attribute.String("db.operation", "ROWS AFFECTED"),
+				attribute.String("db.table", "devices"),
+				attribute.String("device.id", device.DeviceID),
+			}, err)
+		}
 		if err == nil && rowsAffected > 0 {
 			insertedCount++
 		}
@@ -508,6 +540,11 @@ func (r *DeviceRepository) CreateDevicesBatch(ctx context.Context, devices []*De
 
 	// Commit transaction
 	if err := tx.Commit(); err != nil {
+		r.sqlTracer.LogSQLError(ctx, "[repository] commit create devices batch", []attribute.KeyValue{
+			attribute.String("db.operation", "COMMIT"),
+			attribute.String("db.table", "devices"),
+			attribute.Int("batch.size", len(devices)),
+		}, err)
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
