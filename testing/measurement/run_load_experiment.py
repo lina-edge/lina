@@ -49,6 +49,7 @@ DEFAULT_RESULTS_ROOT = 'testing/measurement/runs'
 DEFAULT_PROMETHEUS_SCRAPE_JOBS = (
     'ledger:9460,consumption:9465,device:9466,redis:9461,node:9463,process:9256,cadvisor:9462'
 )
+DEFAULT_SERVICE_LOG_HEAD_LINES = 200
 DEFAULT_SERVICE_LOG_TAIL_LINES = 200
 TARGET_SERVICE_LOGS = (
     'device',
@@ -256,6 +257,21 @@ def remote_compose_command(destination: str, target_dir: str, compose_file: str,
     return ['ssh', destination, remote]
 
 
+def remote_service_log_head_command(
+    destination: str,
+    target_dir: str,
+    compose_file: str,
+    service: str,
+    head_lines: int,
+) -> list[str]:
+    remote = (
+        f"cd {shlex.quote(target_dir)} && "
+        f"docker compose -f {shlex.quote(compose_file)} logs --no-color {shlex.quote(service)} | "
+        f"head -n {head_lines}"
+    )
+    return ['ssh', destination, remote]
+
+
 def remote_service_log_command(
     destination: str,
     target_dir: str,
@@ -342,7 +358,14 @@ def capture_target_service_logs(args: argparse.Namespace, project_root: Path, ru
 
     for service in TARGET_SERVICE_LOGS:
         log_path = logs_dir / f'{service}.log'
-        command = remote_service_log_command(
+        head_command = remote_service_log_head_command(
+            destination,
+            args.target_dir,
+            args.target_compose_file,
+            service,
+            args.service_log_head_lines,
+        )
+        tail_command = remote_service_log_command(
             destination,
             args.target_dir,
             args.target_compose_file,
@@ -352,13 +375,17 @@ def capture_target_service_logs(args: argparse.Namespace, project_root: Path, ru
         captured_logs[service] = str(log_path)
         print(f"Capturing {service} logs into {log_path}")
         if args.dry_run:
-            print(f"[dry-run] would capture: {command_text(command)}")
+            print(f"[dry-run] would capture first lines: {command_text(head_command)}")
+            print(f"[dry-run] would capture tail lines: {command_text(tail_command)}")
             continue
         with open(log_path, 'w') as output_file:
             output_file.write(f"service={service}\n")
             output_file.write(f"target={destination}\n")
             output_file.write(f"collected_at={iso_z(utc_now())}\n\n")
-            capture_command(command, cwd=project_root, output_file=output_file)
+            output_file.write(f"== first {args.service_log_head_lines} lines ==\n")
+            capture_command(head_command, cwd=project_root, output_file=output_file)
+            output_file.write(f"== tail {args.service_log_tail_lines} lines ==\n")
+            capture_command(tail_command, cwd=project_root, output_file=output_file)
 
     return captured_logs
 
@@ -554,6 +581,8 @@ def parse_args() -> argparse.Namespace:
                         help='Do not plot exported metrics')
     parser.add_argument('--stop-on-k6-failure', action='store_true',
                         help='Skip export/plot if k6 exits non-zero')
+    parser.add_argument('--service-log-head-lines', type=int, default=DEFAULT_SERVICE_LOG_HEAD_LINES,
+                        help='Number of initial lines to capture from each target service after k6 exits')
     parser.add_argument('--service-log-tail-lines', type=int, default=DEFAULT_SERVICE_LOG_TAIL_LINES,
                         help='Number of tail lines to capture from each target service after k6 exits')
 
@@ -649,6 +678,7 @@ def main() -> int:
         },
         'service_logs': {
             'services': list(TARGET_SERVICE_LOGS),
+            'head_lines': args.service_log_head_lines,
             'tail_lines': args.service_log_tail_lines,
             'captured_at': None,
             'files': {},
@@ -756,15 +786,26 @@ def main() -> int:
         service_log_commands = {}
         destination = ssh_destination(args.target_user, args.target_host)
         for service in TARGET_SERVICE_LOGS:
-            service_log_commands[service] = command_text(
-                remote_service_log_command(
-                    destination,
-                    args.target_dir,
-                    args.target_compose_file,
-                    service,
-                    args.service_log_tail_lines,
-                )
-            )
+            service_log_commands[service] = {
+                'head': command_text(
+                    remote_service_log_head_command(
+                        destination,
+                        args.target_dir,
+                        args.target_compose_file,
+                        service,
+                        args.service_log_head_lines,
+                    )
+                ),
+                'tail': command_text(
+                    remote_service_log_command(
+                        destination,
+                        args.target_dir,
+                        args.target_compose_file,
+                        service,
+                        args.service_log_tail_lines,
+                    )
+                ),
+            }
         manifest['commands']['service_logs'] = service_log_commands
         manifest['service_logs']['files'] = capture_target_service_logs(args, project_root, run_dir)
         manifest['service_logs']['captured_at'] = iso_z(utc_now())
